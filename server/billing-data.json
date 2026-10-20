@@ -1,0 +1,232 @@
+{
+  "company_settings": [
+    {
+      "id": 1,
+      "name": "APOORV",
+      "phone": "8130140936",
+      "email": "apoorv@enterprise.com",
+      "gstin": "10AABCA1234F1Z5",
+      "address": "Station Road, Samastipur, Bihar - 848101",
+      "upi_id": "8130140936@upi",
+      "tagline": "Quality Feeds & Engineering Solutions",
+      "terms": "1. Goods once sold will not be taken back.\n2. Interest @ 18% p.a. will be charged if payment is not received within due date.\n3. Subject to Samastipur jurisdiction."
+    }
+  ],
+  "parties": [
+    {
+      "id": 1,
+      "name": "DIVYADRISHTI FEEDS PVT. LTD.",
+      "phone": "9876543210",
+      "type": "customer",
+      "gstin": "10AAACD5544K1ZR",
+      "address": "Industrial Area, Hajipur",
+      "state": "Bihar",
+      "opening_balance": 0,
+      "current_balance": 2915916
+    },
+    {
+      "id": 2,
+      "name": "AVYAAN",
+      "phone": "9123456780",
+      "type": "customer",
+      "gstin": "10BBBPB8899M1ZQ",
+      "address": "Market Complex, Patna",
+      "state": "Bihar",
+      "opening_balance": 0,
+      "current_balance": 47600
+    },
+    {
+      "id": 3,
+      "name": "EXECUTIVE ENGINEER FLOOD CONTROL DIVISION SAMASTIPUR",
+      "phone": "0627422345",
+      "type": "customer",
+      "gstin": "10GOVTF1234L1ZS",
+      "address": "Govt Office Campus, Samastipur",
+      "state": "Bihar",
+      "opening_balance": 0,
+      "current_balance": 132500
+    },
+    {
+      "id": 4,
+      "name": "SHREE KRISHNA TRADERS",
+      "phone": "9431200000",
+      "type": "vendor",
+      "gstin": "10XYZPK9988H1ZV",
+      "address": "Muzaffarpur Goods Hub",
+      "state": "Bihar",
+      "opening_balance": 0,
+      "current_balance": -2592460
+    }
+  ],
+  "items": [
+    {
+      "id": 1,
+      "name": "Poultry Feed Premium Gold 50kg",
+      "item_code": "FEED-50KG",
+      "hsn_code": "2309",
+      "category": "Feeds",
+      "unit": "BAG",
+      "sale_price": 1850,
+      "purchase_price": 1600,
+      "tax_rate": 5,
+      "stock_qty": 239,
+      "low_stock_limit": 5
+    },
+    {
+      "id": 2,
+      "name": "Layer Feed Mesh 50kg",
+      "item_code": "LAYER-50KG",
+      "hsn_code": "2309",
+      "category": "Feeds",
+      "unit": "BAG",
+      "sale_price": 1720,
+      "purchase_price": 1500,
+      "tax_rate": 5,
+      "stock_qty": 180,
+      "low_stock_limit": 5
+    },
+    {
+      "id": 3,
+      "name": "High Tensile Galvanized Wire Mesh",
+      "item_code": "MESH-HTG",
+      "hsn_code": "7314",
+      "category": "Hardware",
+      "unit": "ROLL",
+      "sale_price": 3200,
+      "purchase_price": 2700,
+      "tax_rate": 18,
+      "stock_qty": 45,
+      "low_stock_limit": 5
+    },
+    {
+      "id": 4,
+      "name": "Heavy Duty Water Pumps 5HP",
+      "item_code": "PUMP-5HP",
+      "hsn_code": "8413",
+      "category": "Machinery",
+      "unit": "PCS",
+      "sale_price": 18500,
+      "purchase_price": 15500,
+      "tax_rate": 18,
+      "stock_qty": 12,
+      "low_stock_limit": 5
+    },
+    {
+      "id": 5,
+      "name": "Calcium & Vitamin Mineral Pre-Mix",
+      "item_code": "VIT-PREMIX",
+      "hsn_code": "2309",
+      "category": "Supplements",
+      "unit": "KG",
+      "sale_price": 450,
+      "purchase_price": 380,
+      "tax_rate": 12,
+      "stock_qty": 100,
+      "low_stock_limit": 5
+    }
+  ],
+  "transactions": [
+    {
+      "id": 1,
+      "txn_no": "184",
+      "type": "Quotation / Estimate",
+      "date": "2026-09-13",
+      "party_id": 1,
+      "party_name": "DIVYADRISHTI FEEDS PVT. LTD.",
+      "subtotal": 156567.62,
+      "tax_amount": 7828.38,
+      "discount": 0,
+      "amount": 164396,
+      "paid_amount": 0,
+      "balance_due": 164396,
+      "payment_type": "Credit",
+      "status": "Unpaid",
+      "notes": ""
+    },
+    {
+      "id": 2,
+      "txn_no": "183",
+      "type": "Quotation / Estimate",
+      "date": "2026-09-11",
+      "party_id": 1,
+      "party_name": "DIVYADRISHTI FEEDS PVT. LTD.",
+      "subtotal": 85751.43,
+      "tax_amount": 4287.57,
+      "discount": 0,
+      "amount": 90039,
+      "paid_amount": 0,
+      "balance_due": 90039,
+      "payment_type": "Credit",
+      "status": "Unpaid",
+      "notes": ""
+    },
+    {
+      "id": 4,
+      "txn_no": "A/SL/1222",
+      "type": "Sales Invoices",
+      "date": "2026-07-08",
+      "party_id": 2,
+      "party_name": "AVYAAN",
+      "subtotal": 45000,
+      "tax_amount": 8100,
+      "discount": 0,
+      "amount": 53100,
+      "paid_amount": 5500,
+      "balance_due": 47600,
+      "payment_type": "Credit",
+      "status": "Partial",
+      "notes": ""
+    },
+    {
+      "id": 3,
+      "txn_no": "1",
+      "type": "Payment In",
+      "date": "2026-07-08",
+      "party_id": 2,
+      "party_name": "AVYAAN",
+      "subtotal": 5500,
+      "tax_amount": 0,
+      "discount": 0,
+      "amount": 5500,
+      "paid_amount": 5500,
+      "balance_due": 0,
+      "payment_type": "Bank",
+      "status": "Paid",
+      "notes": ""
+    },
+    {
+      "id": 5,
+      "txn_no": "1382",
+      "type": "Quotation / Estimate",
+      "date": "2026-05-22",
+      "party_id": 3,
+      "party_name": "EXECUTIVE ENGINEER FLOOD CONTROL DIVISION SAMASTIPUR",
+      "subtotal": 112288.14,
+      "tax_amount": 20211.86,
+      "discount": 0,
+      "amount": 132500,
+      "paid_amount": 0,
+      "balance_due": 132500,
+      "payment_type": "Credit",
+      "status": "Unpaid",
+      "notes": ""
+    }
+  ],
+  "transaction_items": [],
+  "bank_accounts": [
+    {
+      "id": 1,
+      "name": "Cash in Hand",
+      "account_number": "CASH",
+      "ifsc": "",
+      "balance": 45805
+    },
+    {
+      "id": 2,
+      "name": "State Bank of India (A/C: ...4093)",
+      "account_number": "38920199281",
+      "ifsc": "SBIN0000123",
+      "balance": 169000
+    }
+  ]
+}
