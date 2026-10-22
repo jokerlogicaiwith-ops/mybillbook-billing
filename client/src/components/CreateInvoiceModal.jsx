@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Calculator, Check, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, Plus, Trash2, Calculator, Check, ArrowRight, ScanLine, AlertTriangle, Sparkles } from 'lucide-react';
 
 export default function CreateInvoiceModal({ 
   isOpen, 
@@ -20,6 +20,11 @@ export default function CreateInvoiceModal({
   const [paidAmount, setPaidAmount] = useState(0);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Barcode Scanner State
+  const [barcodeQuery, setBarcodeQuery] = useState('');
+  const [scanFeedback, setScanFeedback] = useState(null);
+  const barcodeInputRef = useRef(null);
 
   // Line items state
   const [items, setItems] = useState([
@@ -43,6 +48,12 @@ export default function CreateInvoiceModal({
       fetchParties();
       fetchItems();
       generateSuggestedTxnNo(initialType);
+      setBarcodeQuery('');
+      setScanFeedback(null);
+      // Auto-focus barcode scanner after modal opens
+      setTimeout(() => {
+        if (barcodeInputRef.current) barcodeInputRef.current.focus();
+      }, 150);
     }
   }, [isOpen, initialType]);
 
@@ -95,6 +106,117 @@ export default function CreateInvoiceModal({
       setCustomPartyName('');
       setPartyPhone('');
       setPartyGstin('');
+    }
+  };
+
+  // Web Audio POS Beep synthesizer
+  const playAudioFeedback = (isSuccess = true) => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (isSuccess) {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.12);
+      } else {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, ctx.currentTime);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.25);
+      }
+    } catch (e) {
+      // Audio might be blocked until user interacts
+    }
+  };
+
+  // Barcode Scan Handler - Auto adds item or increments qty
+  const handleBarcodeProcess = (rawCode) => {
+    const code = (rawCode || '').trim();
+    if (!code) return;
+
+    // Search item by exact item_code / barcode or name or HSN
+    const found = inventoryItems.find(i => 
+      (i.item_code && i.item_code.toLowerCase() === code.toLowerCase()) ||
+      (i.name && i.name.toLowerCase() === code.toLowerCase()) ||
+      (i.hsn_code && i.hsn_code === code)
+    );
+
+    if (!found) {
+      playAudioFeedback(false);
+      setScanFeedback({ type: 'error', message: `Item nahi mila barcode "${code}" ke liye!` });
+      setTimeout(() => setScanFeedback(null), 3500);
+      return;
+    }
+
+    // Found item!
+    playAudioFeedback(true);
+    const rate = txnType === 'Purchase Bills' ? found.purchase_price : found.sale_price;
+
+    let updatedRows = [...items];
+    const existingIdx = updatedRows.findIndex(it => it.item_id === found.id);
+
+    if (existingIdx !== -1) {
+      // Item already in invoice: Auto increment quantity!
+      const currentQty = parseFloat(updatedRows[existingIdx].quantity) || 0;
+      const newQty = currentQty + 1;
+      updatedRows[existingIdx].quantity = newQty;
+      recalculateRow(updatedRows, existingIdx);
+      setScanFeedback({ 
+        type: 'success', 
+        message: `✓ "${found.name}" ki Quantity badhakar ${newQty} kar di!` 
+      });
+    } else {
+      // Not yet in invoice: place in empty row or append new row
+      const emptyIdx = updatedRows.findIndex(it => !it.item_id && !it.item_name);
+      const newRow = {
+        item_id: found.id,
+        item_name: found.name,
+        hsn_code: found.hsn_code || '',
+        quantity: 1,
+        unit: found.unit || 'PCS',
+        rate: rate,
+        discount: 0,
+        tax_rate: found.tax_rate || 0,
+        tax_amount: 0,
+        total: 0
+      };
+
+      if (emptyIdx !== -1) {
+        updatedRows[emptyIdx] = newRow;
+        recalculateRow(updatedRows, emptyIdx);
+      } else {
+        updatedRows.push(newRow);
+        recalculateRow(updatedRows, updatedRows.length - 1);
+      }
+
+      setScanFeedback({ 
+        type: 'success', 
+        message: `✓ Item Auto Add hua: "${found.name}" (Rate: ₹${rate})` 
+      });
+    }
+
+    setBarcodeQuery('');
+    setTimeout(() => setScanFeedback(null), 3000);
+    if (barcodeInputRef.current) {
+      barcodeInputRef.current.focus();
+    }
+  };
+
+  const handleBarcodeKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleBarcodeProcess(barcodeQuery);
     }
   };
 
@@ -298,52 +420,114 @@ export default function CreateInvoiceModal({
                   placeholder="Or enter new party name..."
                   value={customPartyName}
                   onChange={(e) => setCustomPartyName(e.target.value)}
-                  className="mt-2 w-full text-xs font-medium border border-slate-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  className="w-full text-xs font-medium border border-slate-300 rounded-lg p-2 mt-2 bg-white focus:ring-2 focus:ring-blue-500"
                 />
               )}
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Invoice / Bill No.
+                Phone & GSTIN
               </label>
               <input
                 type="text"
-                value={txnNo}
-                onChange={(e) => setTxnNo(e.target.value)}
-                className="w-full text-xs font-mono font-bold border border-slate-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                required
+                placeholder="Phone number"
+                value={partyPhone}
+                onChange={(e) => setPartyPhone(e.target.value)}
+                className="w-full text-xs border border-slate-300 rounded-lg p-2.5 bg-white mb-2"
+              />
+              <input
+                type="text"
+                placeholder="GSTIN (Optional)"
+                value={partyGstin}
+                onChange={(e) => setPartyGstin(e.target.value)}
+                className="w-full text-xs border border-slate-300 rounded-lg p-2 bg-white uppercase font-mono"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Bill Date
-              </label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full text-xs font-medium border border-slate-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-                required
-              />
+              <div className="mb-2">
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Invoice / Txn Date
+                </label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full text-xs border border-slate-300 rounded-lg p-2 bg-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Invoice / Bill No.
+                </label>
+                <input
+                  type="text"
+                  value={txnNo}
+                  onChange={(e) => setTxnNo(e.target.value)}
+                  className="w-full text-xs font-mono font-bold text-blue-600 border border-slate-300 rounded-lg p-2 bg-white"
+                  required
+                />
+              </div>
             </div>
           </div>
 
-          {/* Items Table */}
+          {/* Items & Barcode Scanner Section */}
           <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-            <div className="bg-slate-100 p-3 border-b border-slate-200 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                Items & Charges
-              </span>
-              <button
-                type="button"
-                onClick={addItemRow}
-                className="inline-flex items-center space-x-1 text-xs font-bold bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition"
-              >
-                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>+ Add Item</span>
-              </button>
+            
+            {/* Dedicated Barcode Scanner Bar (myBillBook style auto item detection) */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50/50 p-3.5 border-b border-blue-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex-1 flex items-center space-x-2">
+                <div className="relative flex-1">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-blue-600">
+                    <ScanLine className="w-4 h-4 animate-pulse stroke-[2.5]" />
+                  </div>
+                  <input
+                    ref={barcodeInputRef}
+                    type="text"
+                    placeholder="📷 Scan Barcode or Enter Code (e.g. 706421053767) - Enter dabate hi Auto Add hoga!"
+                    value={barcodeQuery}
+                    onChange={(e) => setBarcodeQuery(e.target.value)}
+                    onKeyDown={handleBarcodeKeyDown}
+                    className="w-full pl-9 pr-3 py-2 bg-white border border-blue-300 rounded-xl text-xs font-mono font-bold text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleBarcodeProcess(barcodeQuery)}
+                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1 shadow-2xs whitespace-nowrap"
+                >
+                  <span>+ Auto Add Item</span>
+                </button>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                {scanFeedback && (
+                  <div className={`text-xs font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1.5 animate-in fade-in duration-150 ${
+                    scanFeedback.type === 'success' 
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs' 
+                      : 'bg-red-100 text-red-800 border border-red-300 shadow-2xs'
+                  }`}>
+                    {scanFeedback.type === 'success' ? (
+                      <Check className="w-4 h-4 text-emerald-600 stroke-[3]" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-red-600 stroke-[2.5]" />
+                    )}
+                    <span>{scanFeedback.message}</span>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={addItemRow}
+                  className="inline-flex items-center space-x-1 text-xs font-bold bg-white text-slate-700 border border-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition shadow-2xs whitespace-nowrap"
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>+ Manual Row</span>
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -351,7 +535,7 @@ export default function CreateInvoiceModal({
                 <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
                   <tr>
                     <th className="p-2.5 w-6">#</th>
-                    <th className="p-2.5 min-w-[200px]">Item Description</th>
+                    <th className="p-2.5 min-w-[200px]">Item Description / Barcode</th>
                     <th className="p-2.5 w-20">HSN</th>
                     <th className="p-2.5 w-16">Qty</th>
                     <th className="p-2.5 w-20">Unit</th>
@@ -369,12 +553,15 @@ export default function CreateInvoiceModal({
                       <td className="p-2.5">
                         <input
                           type="text"
-                          placeholder="Search / enter item..."
+                          placeholder="Search / enter item or barcode..."
                           list={`items-list-${idx}`}
                           value={row.item_name}
                           onChange={(e) => {
                             const val = e.target.value;
-                            const matched = inventoryItems.find(i => i.name.toLowerCase() === val.toLowerCase());
+                            const matched = inventoryItems.find(i => 
+                              i.name.toLowerCase() === val.toLowerCase() ||
+                              (i.item_code && i.item_code.toLowerCase() === val.toLowerCase())
+                            );
                             if (matched) {
                               handleItemSelect(idx, matched.id);
                             } else {
@@ -387,7 +574,7 @@ export default function CreateInvoiceModal({
                         <datalist id={`items-list-${idx}`}>
                           {inventoryItems.map(inv => (
                             <option key={inv.id} value={inv.name}>
-                              ₹{inv.sale_price} (Stock: {inv.stock_qty})
+                              {inv.item_code ? `[${inv.item_code}] ` : ''}₹{inv.sale_price} (Stock: {inv.stock_qty})
                             </option>
                           ))}
                         </datalist>

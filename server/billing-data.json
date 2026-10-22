@@ -167,6 +167,32 @@
       "tax_rate": 12,
       "stock_qty": 100,
       "low_stock_limit": 5
+    },
+    {
+      "id": 6,
+      "name": "DEMO ITEM",
+      "item_code": "706421053767",
+      "hsn_code": "8471",
+      "category": "Electronics",
+      "unit": "PCS",
+      "sale_price": 1000,
+      "purchase_price": 800,
+      "tax_rate": 18,
+      "stock_qty": 150,
+      "low_stock_limit": 5
+    },
+    {
+      "id": 7,
+      "name": "TEST BARCODE PROD",
+      "item_code": "706499998888",
+      "hsn_code": "",
+      "category": "General",
+      "unit": "PCS",
+      "sale_price": 500,
+      "purchase_price": 400,
+      "tax_rate": 18,
+      "stock_qty": 20,
+      "low_stock_limit": 5
     }
   ],
   "transactions": [
