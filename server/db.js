@@ -394,6 +394,36 @@ function createJsonDb() {
             saveStore();
             return { changes: 1 };
           }
+          if (cleanSql.includes('DELETE FROM items WHERE id = ?')) {
+            const [id] = params;
+            const idx = store.items.findIndex(i => i.id === Number(id));
+            if (idx !== -1) {
+              store.items.splice(idx, 1);
+              saveStore();
+              return { changes: 1 };
+            }
+            return { changes: 0 };
+          }
+          if (cleanSql.includes('UPDATE items SET stock_qty = ? WHERE id = ?')) {
+            const [qty, id] = params;
+            const item = store.items.find(i => i.id === Number(id));
+            if (item) {
+              item.stock_qty = Number(qty);
+              saveStore();
+              return { changes: 1 };
+            }
+            return { changes: 0 };
+          }
+          if (cleanSql.startsWith('UPDATE items SET name = ?')) {
+            const [name, item_code, hsn_code, category, unit, sale_price, purchase_price, tax_rate, stock_qty, low_stock_limit, id] = params;
+            const item = store.items.find(i => i.id === Number(id));
+            if (item) {
+              Object.assign(item, { name, item_code, hsn_code, category, unit, sale_price: Number(sale_price), purchase_price: Number(purchase_price), tax_rate: Number(tax_rate), stock_qty: Number(stock_qty), low_stock_limit: Number(low_stock_limit) });
+              saveStore();
+              return { changes: 1 };
+            }
+            return { changes: 0 };
+          }
           return { changes: 0 };
         }
       };

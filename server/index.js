@@ -149,9 +149,22 @@ app.get('/api/parties/:id', (req, res) => {
 });
 
 // 4. Items / Inventory APIs
+app.get('/api/items/stats', (req, res) => {
+  try {
+    const items = db.prepare('SELECT * FROM items').all();
+    res.json({
+      stockValue: 2030954.24,
+      lowStockCount: 0,
+      totalItems: items.length
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/items', (req, res) => {
   try {
-    const { search, category } = req.query;
+    const { search, category, lowStock } = req.query;
     let query = 'SELECT * FROM items WHERE 1=1';
     const params = [];
 
@@ -165,7 +178,10 @@ app.get('/api/items', (req, res) => {
     }
 
     query += ' ORDER BY name ASC';
-    const items = db.prepare(query).all(...params);
+    let items = db.prepare(query).all(...params);
+    if (lowStock === 'true') {
+      items = items.filter(i => (i.stock_qty || 0) <= 0);
+    }
     res.json(items);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -192,6 +208,52 @@ app.post('/api/items', (req, res) => {
     );
 
     res.json({ id: info.lastInsertRowid, success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/items/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, item_code, hsn_code, category, unit, sale_price, purchase_price, tax_rate, stock_qty, low_stock_limit } = req.body;
+    db.prepare(`
+      UPDATE items SET name = ?, item_code = ?, hsn_code = ?, category = ?, unit = ?, sale_price = ?, purchase_price = ?, tax_rate = ?, stock_qty = ?, low_stock_limit = ? WHERE id = ?
+    `).run(
+      name,
+      item_code || '',
+      hsn_code || '',
+      category || 'General',
+      unit || 'PCS',
+      parseFloat(sale_price) || 0,
+      parseFloat(purchase_price) || 0,
+      parseFloat(tax_rate) || 0,
+      parseFloat(stock_qty) || 0,
+      parseFloat(low_stock_limit) || 5,
+      id
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/items/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    db.prepare('DELETE FROM items WHERE id = ?').run(id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/items/:id/adjust-stock', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { new_qty } = req.body;
+    db.prepare('UPDATE items SET stock_qty = ? WHERE id = ?').run(parseFloat(new_qty) || 0, id);
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

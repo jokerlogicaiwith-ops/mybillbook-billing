@@ -26,11 +26,26 @@ export default function Sidebar({
   onOpenInvoiceModal, 
   company,
   salesSubTab = 'invoices',
-  setSalesSubTab
+  setSalesSubTab,
+  itemsSubTab = 'inventory',
+  setItemsSubTab
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [salesExpanded, setSalesExpanded] = useState(true);
+  const [itemsExpanded, setItemsExpanded] = useState(true);
   const [showMoreAccounting, setShowMoreAccounting] = useState(false);
+
+  const itemsSubmenuItems = [
+    { id: 'inventory', label: 'Inventory' },
+    { id: 'godown', label: 'Godown (Warehouse)' }
+  ];
+
+  const handleSelectItemsSubItem = (subId) => {
+    setActiveTab('items');
+    if (setItemsSubTab) {
+      setItemsSubTab(subId);
+    }
+  };
 
   const salesSubmenuItems = [
     { id: 'invoices', label: 'Sales Invoices' },
@@ -160,21 +175,52 @@ export default function Sidebar({
               <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
             </button>
 
-            {/* Items */}
-            <button
-              onClick={() => setActiveTab('items')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                activeTab === 'items' 
-                  ? 'bg-[#232f4b] text-white shadow-xs font-semibold' 
-                  : 'hover:bg-slate-800/60 text-slate-300 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <Boxes className={`w-4 h-4 ${activeTab === 'items' ? 'text-blue-400' : 'text-slate-400'}`} />
-                <span>Items</span>
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
-            </button>
+            {/* Items (Accordion with Chevron) */}
+            <div>
+              <button
+                onClick={() => {
+                  setItemsExpanded(!itemsExpanded);
+                  setActiveTab('items');
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  activeTab === 'items'
+                    ? 'text-white' 
+                    : 'hover:bg-slate-800/60 text-slate-300 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <Boxes className={`w-4 h-4 ${activeTab === 'items' ? 'text-blue-400' : 'text-slate-400'}`} />
+                  <span className="font-semibold">Items</span>
+                </div>
+                {itemsExpanded ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                )}
+              </button>
+
+              {/* Items Submenu */}
+              {itemsExpanded && (
+                <div className="mt-0.5 ml-4 pl-3 border-l border-slate-700/60 space-y-0.5 animate-in fade-in duration-150">
+                  {itemsSubmenuItems.map((sub) => {
+                    const isSelected = activeTab === 'items' && itemsSubTab === sub.id;
+                    return (
+                      <button
+                        key={sub.id}
+                        onClick={() => handleSelectItemsSubItem(sub.id)}
+                        className={`w-full text-left px-2.5 py-1.5 rounded-md text-[11px] transition-all flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-[#25324e] text-white font-semibold shadow-xs'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                        }`}
+                      >
+                        <span className="truncate">{sub.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Sales (Accordion with Chevron) */}
             <div>

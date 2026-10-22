@@ -24,6 +24,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('sales'); // Default to sales to immediately show Sales Invoices!
   const [salesSubTab, setSalesSubTab] = useState('invoices');
+  const [itemsSubTab, setItemsSubTab] = useState('inventory');
   const [company, setCompany] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -103,13 +104,15 @@ export default function App() {
         setActiveTab={setActiveTab} 
         salesSubTab={salesSubTab}
         setSalesSubTab={setSalesSubTab}
+        itemsSubTab={itemsSubTab}
+        setItemsSubTab={setItemsSubTab}
         onOpenInvoiceModal={handleOpenInvoiceModal}
         company={company}
       />
 
       {/* Main Content Area */}
       <div className="flex-1 ml-64 flex flex-col min-h-screen">
-        {activeTab !== 'sales' && (
+        {activeTab !== 'sales' && activeTab !== 'items' && (
           <Header 
             title={getPageTitle()} 
             onRefresh={fetchDashboard}
@@ -118,7 +121,7 @@ export default function App() {
           />
         )}
 
-        <main className={`flex-1 ${activeTab === 'sales' ? 'p-0' : 'pb-16'}`}>
+        <main className={`flex-1 ${activeTab === 'sales' || activeTab === 'items' ? 'p-0' : 'pb-16'}`}>
           {activeTab === 'dashboard' && (
             <Dashboard 
               dashboardData={dashboardData}
@@ -137,7 +140,11 @@ export default function App() {
           )}
 
           {activeTab === 'items' && (
-            <ItemsView />
+            <ItemsView 
+              subTab={itemsSubTab}
+              onSelectSubTab={setItemsSubTab}
+              onOpenInvoiceModal={handleOpenInvoiceModal}
+            />
           )}
 
           {activeTab === 'sales' && (
