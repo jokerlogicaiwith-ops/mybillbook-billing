@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Printer, Download, Sparkles, Copy, Layers } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
 
-export default function ViewBarcodeModal({ isOpen, onClose, item, companyName = 'VSRM COMPUTER CLASSES' }) {
+export default function ViewBarcodeModal({ isOpen, onClose, item, companyName = 'APOORV' }) {
   const svgRef = useRef(null);
   const [copies, setCopies] = useState(1);
   const [layout, setLayout] = useState('thermal'); // 'thermal' (50x35mm) or 'a4' (24-up sticker sheet)
@@ -10,7 +10,7 @@ export default function ViewBarcodeModal({ isOpen, onClose, item, companyName = 
   const barcodeValue = item?.item_code || (item?.id ? `7064${String(item.id).padStart(8, '0')}` : '790897163484');
   const itemName = item?.name || 'DEMO ITEM';
   const salePrice = item?.sale_price !== undefined ? parseFloat(item.sale_price).toFixed(2) : '1000.00';
-  const displayCompany = companyName || 'VSRM COMPUTER CLASSES';
+  const displayCompany = companyName || 'APOORV';
 
   useEffect(() => {
     if (isOpen && svgRef.current && barcodeValue) {
