@@ -198,6 +198,100 @@ app.post('/api/items', (req, res) => {
 });
 
 // 5. Transactions / Invoices APIs
+app.get('/api/sales/stats', (req, res) => {
+  try {
+    const requestedType = req.query.type || 'Sales Invoices';
+    const txns = db.prepare("SELECT * FROM transactions WHERE type = ?").all(requestedType);
+    const typeTxns = txns.filter(t => t.type === requestedType);
+
+    if (requestedType === 'Quotation / Estimate') {
+      const totalQuotations = typeTxns.reduce((a, t) => a + (Number(t.amount) || 0), 0);
+      const openAmount = typeTxns.filter(t => t.status === 'Open').reduce((a, t) => a + (Number(t.amount) || 0), 0);
+      const convertedAmount = typeTxns.filter(t => t.status === 'Converted').reduce((a, t) => a + (Number(t.amount) || 0), 0);
+      return res.json({
+        card1: { label: 'Total Quotations', value: totalQuotations, format: 'currency' },
+        card2: { label: 'Open', value: openAmount, format: 'currency', color: 'text-amber-600' },
+        card3: { label: 'Converted', value: convertedAmount, format: 'currency', color: 'text-emerald-600' },
+        card4: { label: 'Expired', value: '-', format: 'raw' }
+      });
+    }
+
+    if (requestedType === 'Payment In') {
+      const totalReceived = typeTxns.reduce((a, t) => a + (Number(t.amount) || 0), 0);
+      const bankAmount = typeTxns.filter(t => (t.payment_type || '').includes('Bank')).reduce((a, t) => a + (Number(t.amount) || 0), 0);
+      const cashAmount = typeTxns.filter(t => (t.payment_type || '').includes('Cash')).reduce((a, t) => a + (Number(t.amount) || 0), 0);
+      return res.json({
+        card1: { label: 'Total Received', value: totalReceived, format: 'currency' },
+        card2: { label: 'Bank / Online', value: bankAmount, format: 'currency', color: 'text-emerald-600' },
+        card3: { label: 'Cash', value: cashAmount, format: 'currency', color: 'text-blue-600' },
+        card4: { label: 'Unlinked', value: 0, format: 'currency' }
+      });
+    }
+
+    if (requestedType === 'Sales Return') {
+      const totalReturns = typeTxns.reduce((a, t) => a + (Number(t.amount) || 0), 0);
+      return res.json({
+        card1: { label: 'Total Sales Return', value: totalReturns, format: 'currency' },
+        card2: { label: 'Refunded', value: totalReturns, format: 'currency', color: 'text-emerald-600' },
+        card3: { label: 'Replaced', value: '-', format: 'raw' },
+        card4: { label: 'Cancelled', value: '-', format: 'raw' }
+      });
+    }
+
+    if (requestedType === 'Credit Note') {
+      const totalCredit = typeTxns.reduce((a, t) => a + (Number(t.amount) || 0), 0);
+      return res.json({
+        card1: { label: 'Total Credit Notes', value: totalCredit, format: 'currency' },
+        card2: { label: 'Adjusted', value: totalCredit, format: 'currency', color: 'text-emerald-600' },
+        card3: { label: 'Unadjusted', value: 0, format: 'currency' },
+        card4: { label: 'Cancelled', value: '-', format: 'raw' }
+      });
+    }
+
+    if (requestedType === 'Delivery Challan') {
+      const totalChallans = typeTxns.length;
+      const deliveredCount = typeTxns.filter(t => t.status === 'Delivered').length;
+      const inTransitCount = typeTxns.filter(t => t.status === 'In Transit').length;
+      return res.json({
+        card1: { label: 'Total Challans', value: totalChallans, format: 'count' },
+        card2: { label: 'Delivered', value: deliveredCount, format: 'count', color: 'text-emerald-600' },
+        card3: { label: 'In Transit', value: inTransitCount, format: 'count', color: 'text-amber-600' },
+        card4: { label: 'Cancelled', value: '-', format: 'raw' }
+      });
+    }
+
+    if (requestedType === 'Proforma Invoice') {
+      const totalProforma = typeTxns.reduce((a, t) => a + (Number(t.amount) || 0), 0);
+      const activeAmount = typeTxns.filter(t => t.status === 'Active').reduce((a, t) => a + (Number(t.amount) || 0), 0);
+      return res.json({
+        card1: { label: 'Total Proforma', value: totalProforma, format: 'currency' },
+        card2: { label: 'Active', value: activeAmount, format: 'currency', color: 'text-emerald-600' },
+        card3: { label: 'Converted', value: '-', format: 'raw' },
+        card4: { label: 'Expired', value: '-', format: 'raw' }
+      });
+    }
+
+    // Default: Sales Invoices
+    const totalSales = typeTxns.reduce((a, t) => a + (Number(t.amount) || 0), 0);
+    const paid = typeTxns.reduce((a, t) => a + (Number(t.paid_amount) || 0), 0);
+    const unpaid = typeTxns.reduce((a, t) => a + (Number(t.balance_due) || 0), 0);
+    const cancelledCount = typeTxns.filter(t => t.status === 'Cancelled').length;
+
+    res.json({
+      totalSales,
+      paid,
+      unpaid,
+      cancelled: cancelledCount === 0 ? '-' : cancelledCount,
+      card1: { label: 'Total Sales', value: totalSales, format: 'currency' },
+      card2: { label: 'Paid', value: paid, format: 'currency', color: 'text-emerald-600' },
+      card3: { label: 'Unpaid', value: unpaid, format: 'currency', color: 'text-red-600' },
+      card4: { label: 'Cancelled', value: cancelledCount === 0 ? '-' : cancelledCount, format: 'raw' }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/transactions', (req, res) => {
   try {
     const { type, search, limit } = req.query;

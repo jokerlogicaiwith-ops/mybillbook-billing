@@ -47,7 +47,16 @@ export default function CreateInvoiceModal({
   }, [isOpen, initialType]);
 
   const generateSuggestedTxnNo = (type) => {
-    const prefix = type === 'Sales Invoices' ? 'INV' : (type === 'Quotation / Estimate' ? 'EST' : (type === 'Purchase Bills' ? 'PUR' : 'TXN'));
+    let prefix = 'INV';
+    if (type === 'Sales Invoices') prefix = 'A/SL';
+    else if (type === 'Quotation / Estimate') prefix = 'EST';
+    else if (type === 'Payment In') prefix = 'PAY';
+    else if (type === 'Sales Return') prefix = 'SR';
+    else if (type === 'Credit Note') prefix = 'CN';
+    else if (type === 'Delivery Challan') prefix = 'DC';
+    else if (type === 'Proforma Invoice') prefix = 'PI';
+    else if (type === 'Purchase Bills') prefix = 'PUR';
+
     const rand = Math.floor(1000 + Math.random() * 9000);
     setTxnNo(`${prefix}-${rand}`);
   };
@@ -235,14 +244,22 @@ export default function CreateInvoiceModal({
             <span className="text-sm font-bold uppercase tracking-wider text-blue-400">
               New Transaction
             </span>
-            <div className="flex space-x-1 bg-slate-800 p-0.5 rounded-lg text-xs font-semibold">
-              {['Sales Invoices', 'Quotation / Estimate', 'Payment In', 'Purchase Bills'].map(t => (
+            <div className="flex flex-wrap gap-1 bg-slate-800 p-0.5 rounded-lg text-xs font-semibold">
+              {[
+                'Sales Invoices', 
+                'Quotation / Estimate', 
+                'Payment In', 
+                'Sales Return', 
+                'Credit Note', 
+                'Delivery Challan', 
+                'Proforma Invoice'
+              ].map(t => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => { setTxnType(t); generateSuggestedTxnNo(t); }}
-                  className={`px-3 py-1 rounded-md transition ${
-                    txnType === t ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
+                  className={`px-2.5 py-1 rounded-md transition text-[11px] ${
+                    txnType === t ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-slate-300 hover:text-white'
                   }`}
                 >
                   {t}

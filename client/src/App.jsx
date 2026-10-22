@@ -7,6 +7,7 @@ import InvoicePrintModal from './components/InvoicePrintModal';
 import PartiesView from './components/PartiesView';
 import ItemsView from './components/ItemsView';
 import SalesView from './components/SalesView';
+import SalesInvoicesView from './components/SalesInvoicesView';
 import SettingsView from './components/SettingsView';
 import CustomerBillView from './components/CustomerBillView';
 import { Building2, Sparkles, ScanLine, FileSpreadsheet, ShieldAlert } from 'lucide-react';
@@ -21,7 +22,8 @@ export default function App() {
     return <CustomerBillView identifier={customerBillId} onBackToApp={() => window.location.href = '/'} />;
   }
 
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('sales'); // Default to sales to immediately show Sales Invoices!
+  const [salesSubTab, setSalesSubTab] = useState('invoices');
   const [company, setCompany] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -99,20 +101,24 @@ export default function App() {
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
+        salesSubTab={salesSubTab}
+        setSalesSubTab={setSalesSubTab}
         onOpenInvoiceModal={handleOpenInvoiceModal}
         company={company}
       />
 
       {/* Main Content Area */}
       <div className="flex-1 ml-64 flex flex-col min-h-screen">
-        <Header 
-          title={getPageTitle()} 
-          onRefresh={fetchDashboard}
-          isRefreshing={loading}
-          onOpenInvoiceModal={handleOpenInvoiceModal}
-        />
+        {activeTab !== 'sales' && (
+          <Header 
+            title={getPageTitle()} 
+            onRefresh={fetchDashboard}
+            isRefreshing={loading}
+            onOpenInvoiceModal={handleOpenInvoiceModal}
+          />
+        )}
 
-        <main className="flex-1 pb-16">
+        <main className={`flex-1 ${activeTab === 'sales' ? 'p-0' : 'pb-16'}`}>
           {activeTab === 'dashboard' && (
             <Dashboard 
               dashboardData={dashboardData}
@@ -134,7 +140,16 @@ export default function App() {
             <ItemsView />
           )}
 
-          {(activeTab === 'sales' || activeTab === 'purchases') && (
+          {activeTab === 'sales' && (
+            <SalesInvoicesView 
+              subTab={salesSubTab}
+              onSelectSubTab={setSalesSubTab}
+              onOpenInvoiceModal={handleOpenInvoiceModal}
+              onViewInvoice={handleViewInvoice}
+            />
+          )}
+
+          {activeTab === 'purchases' && (
             <SalesView 
               onOpenInvoiceModal={handleOpenInvoiceModal}
               onViewInvoice={handleViewInvoice}
