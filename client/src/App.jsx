@@ -22,7 +22,7 @@ export default function App() {
     return <CustomerBillView identifier={customerBillId} onBackToApp={() => window.location.href = '/'} />;
   }
 
-  const [activeTab, setActiveTab] = useState('sales'); // Default to sales to immediately show Sales Invoices!
+  const [activeTab, setActiveTab] = useState('items'); // Default to items to immediately show MyBillBook Items!
   const [salesSubTab, setSalesSubTab] = useState('invoices');
   const [itemsSubTab, setItemsSubTab] = useState('inventory');
   const [company, setCompany] = useState(null);
