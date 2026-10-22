@@ -950,38 +950,53 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-semibold text-slate-700">Item Code / Barcode</label>
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, item_code: generateBarcodeNumber() })}
-                      className="text-[10px] text-indigo-600 font-semibold hover:underline flex items-center space-x-0.5"
-                    >
-                      <Sparkles className="w-3 h-3 text-amber-500" />
-                      <span>Generate 12-Digit</span>
-                    </button>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="e.g. 706497335285"
-                      value={formData.item_code}
-                      onChange={(e) => setFormData({ ...formData, item_code: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs focus:ring-1 focus:ring-indigo-500"
-                    />
-                    {formData.item_code && (
+                    <div className="flex items-center space-x-2">
                       <button
                         type="button"
                         onClick={() => handleOpenBarcode({
                           ...formData,
                           name: formData.name || 'NEW ITEM',
-                          sale_price: formData.sale_price || 0
+                          sale_price: formData.sale_price || 0,
+                          item_code: formData.item_code || generateBarcodeNumber()
                         })}
-                        className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold whitespace-nowrap flex items-center space-x-1 transition shadow-2xs"
-                        title="Product par chipkane ke liye barcode sticker print karein"
+                        className="text-[11px] text-blue-600 font-bold hover:underline flex items-center space-x-0.5 cursor-pointer"
                       >
-                        <Printer className="w-3.5 h-3.5" />
-                        <span>Print Sticker</span>
+                        <ScanLine className="w-3 h-3 text-blue-600" />
+                        <span>View Barcode</span>
                       </button>
-                    )}
+                      <span className="text-slate-300">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, item_code: generateBarcodeNumber() })}
+                        className="text-[11px] text-indigo-600 font-semibold hover:underline flex items-center space-x-0.5 cursor-pointer"
+                      >
+                        <Sparkles className="w-3 h-3 text-amber-500" />
+                        <span>Generate 12-Digit</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. 790897163484"
+                      value={formData.item_code}
+                      onChange={(e) => setFormData({ ...formData, item_code: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs font-bold text-slate-900 focus:ring-1 focus:ring-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleOpenBarcode({
+                        ...formData,
+                        name: formData.name || 'NEW ITEM',
+                        sale_price: formData.sale_price || 0,
+                        item_code: formData.item_code || generateBarcodeNumber()
+                      })}
+                      className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold whitespace-nowrap flex items-center space-x-1.5 transition shadow-2xs cursor-pointer"
+                      title="View Barcode (bilkul myBillBook jaisa popup)"
+                    >
+                      <ScanLine className="w-3.5 h-3.5" />
+                      <span>View Barcode</span>
+                    </button>
                   </div>
                 </div>
 
