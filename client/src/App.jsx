@@ -23,10 +23,11 @@ export default function App() {
     return <CustomerBillView identifier={customerBillId} onBackToApp={() => window.location.href = '/'} />;
   }
 
-  const [activeTab, setActiveTab] = useState('purchases'); // Show Purchases screen directly as requested by user
+  const urlAction = searchParams.get('action');
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'purchases');
   const [salesSubTab, setSalesSubTab] = useState('invoices');
   const [itemsSubTab, setItemsSubTab] = useState('inventory');
-  const [purchasesSubTab, setPurchasesSubTab] = useState('invoices');
+  const [purchasesSubTab, setPurchasesSubTab] = useState(urlAction === 'create' ? 'create' : (searchParams.get('sub') || 'invoices'));
   const [company, setCompany] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(false);
