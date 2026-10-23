@@ -1,11 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, Search, AlertTriangle, CheckCircle, Tag, ScanLine, Sparkles, 
   Printer, MoreVertical, FileText, Settings, Share2, Info, ChevronDown, 
   Warehouse, ArrowRightLeft, Download, Trash2, Edit3, Copy, X, SlidersHorizontal,
   ExternalLink, TrendingUp, Package, Eye, HelpCircle, Layers, Barcode, Keyboard
 } from 'lucide-react';
+import JsBarcode from 'jsbarcode';
 import ViewBarcodeModal from './ViewBarcodeModal';
+
+// Mini barcode component to render visual barcode lines (zebra stripes / laarah)
+function MiniBarcode({ code, height = 24, width = 1.2, showValue = false, className = '' }) {
+  const svgRef = useRef(null);
+
+  useEffect(() => {
+    if (svgRef.current && code) {
+      try {
+        JsBarcode(svgRef.current, String(code), {
+          format: 'CODE128',
+          width: width,
+          height: height,
+          displayValue: showValue,
+          margin: 0,
+          background: 'transparent',
+          lineColor: '#0f172a'
+        });
+      } catch (e) {
+        try {
+          JsBarcode(svgRef.current, String(code).replace(/[^a-zA-Z0-9]/g, '') || '000000', {
+            format: 'CODE128',
+            width: width,
+            height: height,
+            displayValue: showValue,
+            margin: 0,
+            background: 'transparent',
+            lineColor: '#0f172a'
+          });
+        } catch (err) {}
+      }
+    }
+  }, [code, height, width, showValue]);
+
+  if (!code) return null;
+
+  return <svg ref={svgRef} className={className} />;
+}
 
 export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpenInvoiceModal }) {
   const [items, setItems] = useState([]);
@@ -137,8 +175,8 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
     setActionMenuOpenId(null);
   };
 
-  const handleSaveItem = async (e) => {
-    e.preventDefault();
+  const handleSaveItem = async (e, shouldPrintBarcode = false) => {
+    if (e && e.preventDefault) e.preventDefault();
     if (!formData.name.trim()) {
       alert('Please enter Item Name');
       return;
@@ -155,6 +193,8 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
         low_stock_limit: parseFloat(formData.low_stock_limit) || 5
       };
 
+      let savedItemData = null;
+
       if (editingItem) {
         const res = await fetch(`/api/items/${editingItem.id}`, {
           method: 'PUT',
@@ -163,6 +203,7 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
         });
         const d = await res.json();
         if (d.success) {
+          savedItemData = { ...payload, id: editingItem.id };
           showToast(`Item "${formData.name}" updated successfully!`);
         }
       } else {
@@ -173,12 +214,17 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
         });
         const d = await res.json();
         if (d.success) {
+          savedItemData = { ...payload, id: d.id };
           showToast(`Item "${formData.name}" created successfully!`);
         }
       }
 
       setShowCreateModal(false);
       fetchItemsData();
+
+      if (shouldPrintBarcode && savedItemData) {
+        handleOpenBarcode(savedItemData);
+      }
     } catch (err) {
       console.error('Error saving item:', err);
       alert('Failed to save item. Check console.');
@@ -765,9 +811,28 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
                             </div>
                           </td>
 
-                          {/* Item Code (with ellipsis truncation matching screenshot) */}
-                          <td className="py-3.5 px-3 font-mono text-slate-600 text-xs">
-                            {formatItemCode(item.item_code)}
+                          {/* Item Code & Barcode Lines (laarah) */}
+                          <td className="py-2.5 px-3">
+                            {item.item_code ? (
+                              <div 
+                                onClick={() => handleOpenBarcode(item)}
+                                className="group cursor-pointer inline-flex flex-col items-start p-1 -m-1 rounded hover:bg-indigo-50/80 transition"
+                                title="Click to view & print barcode stickers (Thermal / A4)"
+                              >
+                                {/* Visual barcode zebra lines (laarah) */}
+                                <div className="bg-white px-1.5 py-0.5 border border-slate-200 rounded group-hover:border-indigo-400 shadow-2xs flex items-center justify-center">
+                                  <MiniBarcode code={item.item_code} height={20} width={1.15} />
+                                </div>
+                                <div className="flex items-center space-x-1.5 mt-0.5">
+                                  <span className="font-mono text-[11px] font-semibold text-slate-700 group-hover:text-indigo-600">
+                                    {item.item_code}
+                                  </span>
+                                  <ScanLine className="w-2.5 h-2.5 text-slate-400 group-hover:text-indigo-600" />
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 font-mono text-xs">-</span>
+                            )}
                           </td>
 
                           {/* Stock QTY */}
@@ -972,18 +1037,70 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
                     <button
                       type="button"
                       onClick={() => setFormData({ ...formData, item_code: generateBarcodeNumber() })}
-                      className="text-[10px] text-indigo-600 font-semibold hover:underline"
+                      className="text-[10px] text-indigo-600 font-semibold hover:underline flex items-center space-x-0.5"
                     >
-                      Generate 12-Digit
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      <span>Generate 12-Digit</span>
                     </button>
                   </div>
-                  <input
-                    type="text"
-                    placeholder="e.g. 999391455301"
-                    value={formData.item_code}
-                    onChange={(e) => setFormData({ ...formData, item_code: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs focus:ring-1 focus:ring-indigo-500"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. 706447537276"
+                      value={formData.item_code}
+                      onChange={(e) => setFormData({ ...formData, item_code: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-xs font-semibold text-slate-900 focus:ring-1 focus:ring-indigo-500"
+                    />
+                    {formData.item_code && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenBarcode({
+                          ...formData,
+                          name: formData.name || 'NEW ITEM',
+                          sale_price: formData.sale_price || 0,
+                          item_code: formData.item_code
+                        })}
+                        className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold whitespace-nowrap flex items-center space-x-1.5 transition shadow-2xs cursor-pointer"
+                        title="View Barcode & Print Sticker"
+                      >
+                        <ScanLine className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>View Barcode</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Live Visual Barcode Lines (laarah) Preview */}
+                  {formData.item_code && (
+                    <div 
+                      onClick={() => handleOpenBarcode({
+                        ...formData,
+                        name: formData.name || 'NEW ITEM',
+                        sale_price: formData.sale_price || 0,
+                        item_code: formData.item_code
+                      })}
+                      className="mt-2 p-2 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/50 transition group"
+                      title="Click to view & print barcode stickers (Thermal / A4 Sheet)"
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        {/* Zebra stripes (laarah) */}
+                        <div className="bg-white px-2 py-0.5 border border-slate-200 rounded shadow-2xs flex items-center justify-center">
+                          <MiniBarcode code={formData.item_code} height={28} width={1.3} />
+                        </div>
+                        <div>
+                          <span className="font-mono text-xs font-bold text-slate-900 tracking-wider block">
+                            {formData.item_code}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-medium group-hover:text-indigo-600">
+                            Barcode zebra lines • Click to print sticker
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-semibold text-indigo-600 group-hover:underline flex items-center space-x-1 pr-1">
+                        <Printer className="w-3 h-3" />
+                        <span>Print</span>
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -1082,13 +1199,22 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-medium transition"
+                  className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-medium transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
+                  onClick={(e) => handleSaveItem(e, true)}
+                  className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer"
+                  title="Save item and print barcode sticker immediately"
+                >
+                  <Printer className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Save & Print Sticker</span>
+                </button>
+                <button
                   type="submit"
-                  className="px-5 py-2 bg-[#6366f1] hover:bg-[#4f46e5] text-white rounded-lg text-xs font-semibold shadow-xs transition"
+                  className="px-5 py-2 bg-[#6366f1] hover:bg-[#4f46e5] text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer"
                 >
                   {editingItem ? 'Save Changes' : 'Save & Add Item'}
                 </button>
