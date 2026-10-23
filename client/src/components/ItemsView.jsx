@@ -142,7 +142,7 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
     setEditingItem(null);
     setFormData({
       name: '',
-      item_code: '',
+      item_code: generateBarcodeNumber(),
       hsn_code: '',
       category: 'IT',
       unit: 'PCS',
@@ -155,6 +155,13 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
     });
     setShowCreateModal(true);
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('modal') === 'create' || params.get('createItem') === 'true') {
+      handleOpenCreateModal();
+    }
+  }, []);
 
   const handleOpenEditModal = (item) => {
     setEditingItem(item);
