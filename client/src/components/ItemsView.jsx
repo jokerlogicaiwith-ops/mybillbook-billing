@@ -3,10 +3,11 @@ import {
   Plus, Search, AlertTriangle, CheckCircle, Tag, ScanLine, Sparkles, 
   Printer, MoreVertical, FileText, Settings, Share2, Info, ChevronDown, 
   Warehouse, ArrowRightLeft, Download, Trash2, Edit3, Copy, X, SlidersHorizontal,
-  ExternalLink, TrendingUp, Package, Eye, HelpCircle, Layers, Barcode, Keyboard
+  ExternalLink, TrendingUp, Package, Eye, HelpCircle, Layers, Barcode, Keyboard, QrCode
 } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
 import ViewBarcodeModal from './ViewBarcodeModal';
+import BulkBarcodePrintModal from './BulkBarcodePrintModal';
 
 // Mini barcode component to render visual barcode lines (zebra stripes / laarah)
 function MiniBarcode({ code, height = 24, width = 1.2, showValue = false, className = '' }) {
@@ -72,6 +73,7 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
   const [adjustingItem, setAdjustingItem] = useState(null);
   const [newStockQty, setNewStockQty] = useState('');
   const [showBarcodeModal, setShowBarcodeModal] = useState(false);
+  const [showBulkBarcodeModal, setShowBulkBarcodeModal] = useState(false);
   const [barcodeModalItem, setBarcodeModalItem] = useState(null);
   const [companyName, setCompanyName] = useState('APOORV');
 
@@ -833,6 +835,24 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
                 <span>Low Stock</span>
               </button>
 
+              {/* Print Barcode / QR Stickers Button */}
+              <button
+                onClick={() => setShowBulkBarcodeModal(true)}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-semibold border transition shadow-2xs ${
+                  selectedItemIds.length > 0
+                    ? 'bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-xs'
+                    : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50/70'
+                }`}
+                title="Select which items to print as Barcode or QR stickers"
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                <span>
+                  {selectedItemIds.length > 0 
+                    ? `Print Barcode/QR (${selectedItemIds.length})` 
+                    : 'Print Barcodes / QR'}
+                </span>
+              </button>
+
               {/* Bulk Actions Button */}
               <div className="relative">
                 <button
@@ -845,12 +865,15 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
                 {isBulkDropdownOpen && (
                   <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50 text-xs font-medium animate-in fade-in duration-100">
                     <button
-                      onClick={handlePrintAllBarcodes}
-                      className="w-full text-left px-3 py-2 hover:bg-indigo-50/70 flex items-center space-x-2 text-indigo-700 font-bold"
-                      title="Sabhi items ke barcode stickers ek hi A4 sheet par print karein"
+                      onClick={() => {
+                        setShowBulkBarcodeModal(true);
+                        setIsBulkDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-indigo-50/70 flex items-center space-x-2 text-indigo-700 font-bold border-b border-slate-100"
+                      title="Select which items to print as Barcode or QR stickers"
                     >
-                      <ScanLine className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Print All Barcodes (A4 Sheet)</span>
+                      <QrCode className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Print Barcode / QR Stickers</span>
                     </button>
                     <button
                       onClick={handlePrintItemList}
@@ -1463,11 +1486,20 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
         </div>
       )}
 
-      {/* VIEW / PRINT BARCODE MODAL */}
+      {/* VIEW / PRINT SINGLE BARCODE MODAL */}
       <ViewBarcodeModal
         isOpen={showBarcodeModal}
         onClose={() => setShowBarcodeModal(false)}
         item={barcodeModalItem}
+        companyName={companyName}
+      />
+
+      {/* BULK BARCODE & QR PRINT MODAL */}
+      <BulkBarcodePrintModal
+        isOpen={showBulkBarcodeModal}
+        onClose={() => setShowBulkBarcodeModal(false)}
+        items={filteredItems}
+        selectedIds={selectedItemIds}
         companyName={companyName}
       />
     </div>
