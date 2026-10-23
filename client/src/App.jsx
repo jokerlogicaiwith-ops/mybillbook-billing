@@ -66,6 +66,11 @@ export default function App() {
   };
 
   const handleOpenInvoiceModal = (type = 'Sales Invoices') => {
+    if (type === 'Purchase Bills' || type === 'Purchase Invoices' || type === 'Purchase Orders' || type === 'Payment Out' || type === 'Purchase Return' || type === 'Debit Note') {
+      setActiveTab('purchases');
+      setPurchasesSubTab('create');
+      return;
+    }
     setInvoiceModalType(type);
     setIsInvoiceModalOpen(true);
   };

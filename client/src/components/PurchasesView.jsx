@@ -24,6 +24,7 @@ import {
   BarChart3,
   X
 } from 'lucide-react';
+import CreatePurchaseInvoiceView from './CreatePurchaseInvoiceView';
 
 export default function PurchasesView({ 
   onOpenInvoiceModal, 
@@ -31,6 +32,7 @@ export default function PurchasesView({
   subTab = 'invoices',
   onSelectSubTab
 }) {
+  const [isCreating, setIsCreating] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [stats, setStats] = useState({
     totalPurchases: 0,
@@ -180,6 +182,23 @@ export default function PurchasesView({
     if (valA > valB) return sortAsc ? 1 : -1;
     return 0;
   });
+
+  if (isCreating || subTab === 'create') {
+    return (
+      <CreatePurchaseInvoiceView
+        onExit={() => {
+          setIsCreating(false);
+          if (onSelectSubTab && subTab === 'create') onSelectSubTab('invoices');
+        }}
+        onSuccess={(id) => {
+          setIsCreating(false);
+          if (onSelectSubTab && subTab === 'create') onSelectSubTab('invoices');
+          fetchPurchaseData();
+          showToast('Purchase invoice safalta se save ho gayi!');
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 p-6 space-y-5 font-sans relative">
@@ -365,7 +384,7 @@ export default function PurchasesView({
 
         {/* Primary Action Button: Create Purchase Invoice */}
         <button
-          onClick={() => onOpenInvoiceModal(getTypeParam())}
+          onClick={() => setIsCreating(true)}
           className="px-4 py-2.5 bg-[#5c5be5] hover:bg-[#4f46e5] text-white rounded-lg text-xs font-semibold shadow-xs transition flex items-center justify-center space-x-1.5 cursor-pointer"
         >
           <span>{getCreateButtonLabel()}</span>
