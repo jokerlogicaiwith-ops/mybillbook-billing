@@ -300,8 +300,17 @@ function createJsonDb() {
           }
           if (cleanSql.includes('FROM transactions')) {
             let list = [...store.transactions];
-            if (params.length > 0) {
-              list = list.filter(t => params.some(p => String(p).includes(t.party_name) || t.type === p));
+            if (cleanSql.includes("type = 'Purchase Invoices'") || cleanSql.includes("type = 'Purchase Bills'")) {
+              list = list.filter(t => t.type === 'Purchase Invoices' || t.type === 'Purchase Bills');
+            } else if (cleanSql.includes('type = ?')) {
+              list = list.filter(t => params.includes(t.type));
+            }
+            if (cleanSql.includes('party_name LIKE ?')) {
+              const searchParam = params.find(p => String(p).startsWith('%'));
+              if (searchParam) {
+                const q = String(searchParam).replace(/%/g, '').toLowerCase();
+                list = list.filter(t => (t.party_name && t.party_name.toLowerCase().includes(q)) || (t.txn_no && t.txn_no.toLowerCase().includes(q)));
+              }
             }
             return list.sort((a, b) => b.id - a.id);
           }

@@ -150,9 +150,15 @@ export default function PurchasesView({
     setActionMenuOpenId(null);
   };
 
-  // Filter by search query
+  // Filter by transaction type & search query
   let filteredTxns = transactions.filter(t => {
     if (activeSubFilter === 'incomplete') return false;
+    const typeParam = getTypeParam();
+    if (typeParam === 'Purchase Invoices') {
+      if (t.type !== 'Purchase Invoices' && t.type !== 'Purchase Bills') return false;
+    } else {
+      if (t.type !== typeParam) return false;
+    }
     if (!search) return true;
     const q = search.toLowerCase();
     return (
