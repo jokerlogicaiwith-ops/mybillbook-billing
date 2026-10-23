@@ -341,6 +341,12 @@ function A4InvoiceLayout({ invoice, qrCodeUrl, isPrintView = false }) {
           <p className="text-[11px] text-slate-600">
             Payment Mode: <span className="font-bold text-slate-950">{invoice.payment_type || 'Credit'}</span>
           </p>
+          <p className="text-[11px] text-slate-600">
+            Sales Staff: <span className="font-bold text-slate-950">{invoice.staff_name || 'Admin'}</span>
+            {invoice.staff_code && (
+              <span className="font-mono text-slate-600 font-semibold ml-1">({invoice.staff_code})</span>
+            )}
+          </p>
         </div>
       </div>
 
@@ -468,8 +474,11 @@ function A4InvoiceLayout({ invoice, qrCodeUrl, isPrintView = false }) {
         </div>
         <div className="text-right flex flex-col justify-between items-end">
           <span className="font-bold text-slate-800">For {company.name || 'APOORV'}</span>
-          <div className="mt-5 border-t border-slate-400 pt-0.5 w-32 text-center text-slate-500 text-[8px]">
-            Authorized Signatory
+          <div className="mt-4 border-t border-slate-400 pt-0.5 w-36 text-center text-slate-500 text-[8px] space-y-0.5">
+            <div>Authorized Signatory</div>
+            {invoice.staff_name && (
+              <div className="text-[8px] text-slate-600 font-medium">Billed By: {invoice.staff_name} {invoice.staff_code ? `(${invoice.staff_code})` : ''}</div>
+            )}
           </div>
         </div>
       </div>
@@ -525,6 +534,12 @@ function POSReceiptLayout({ invoice, qrCodeUrl, paperWidth = '80mm', isPrintView
           <span>Mode:</span>
           <span className="font-bold uppercase">{invoice.payment_type || 'Credit'}</span>
         </div>
+        {(invoice.staff_name || invoice.staff_code) && (
+          <div className="flex justify-between text-[9px] text-slate-800">
+            <span>Staff / Billed:</span>
+            <span className="font-bold">{invoice.staff_name} {invoice.staff_code ? `(${invoice.staff_code})` : ''}</span>
+          </div>
+        )}
         <div className="flex justify-between pt-0.5">
           <span>Customer:</span>
           <span className="font-bold truncate max-w-[150px]">{invoice.party_name}</span>

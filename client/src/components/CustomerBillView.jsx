@@ -193,6 +193,9 @@ export default function CustomerBillView({ identifier, onBackToApp }) {
               <p className="text-xs text-slate-600">Invoice No: <span className="font-bold text-slate-900 font-mono">{bill.txn_no}</span></p>
               <p className="text-xs text-slate-600">Date: <span className="font-bold text-slate-900">{bill.date}</span></p>
               <p className="text-xs text-slate-600">Payment Mode: <span className="font-bold text-slate-900">{bill.payment_type || 'Credit'}</span></p>
+              {(bill.staff_name || bill.staff_code) && (
+                <p className="text-xs text-slate-600">Sales Staff: <span className="font-bold text-slate-900">{bill.staff_name}</span> {bill.staff_code && <span className="font-mono text-slate-500 font-semibold">({bill.staff_code})</span>}</p>
+              )}
             </div>
           </div>
 
@@ -356,6 +359,9 @@ export default function CustomerBillView({ identifier, onBackToApp }) {
                 <p className="text-[11px] text-slate-600">Invoice No: <span className="font-bold text-slate-900 font-mono">{bill.txn_no}</span></p>
                 <p className="text-[11px] text-slate-600">Date: <span className="font-bold text-slate-900">{bill.date}</span></p>
                 <p className="text-[11px] text-slate-600">Payment Mode: <span className="font-bold text-slate-900">{bill.payment_type || 'Credit'}</span></p>
+                {(bill.staff_name || bill.staff_code) && (
+                  <p className="text-[11px] text-slate-600">Sales Staff: <span className="font-bold text-slate-900">{bill.staff_name}</span> {bill.staff_code && <span className="font-mono text-slate-500 font-semibold">({bill.staff_code})</span>}</p>
+                )}
               </div>
             </div>
 
@@ -464,7 +470,12 @@ export default function CustomerBillView({ identifier, onBackToApp }) {
               </div>
               <div className="text-right flex flex-col justify-between items-end">
                 <span className="font-bold text-slate-800">For {bill.company?.name || 'APOORV'}</span>
-                <div className="mt-5 border-t border-slate-400 pt-0.5 w-32 text-center text-slate-500 text-[8px]">Authorized Signatory</div>
+                <div className="mt-4 border-t border-slate-400 pt-0.5 w-36 text-center text-slate-500 text-[8px] space-y-0.5">
+                  <div>Authorized Signatory</div>
+                  {bill.staff_name && (
+                    <div className="text-[8px] text-slate-600 font-medium">Billed By: {bill.staff_name} {bill.staff_code ? `(${bill.staff_code})` : ''}</div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -480,6 +491,12 @@ export default function CustomerBillView({ identifier, onBackToApp }) {
             <div className="space-y-0.5 text-[10px]">
               <div className="flex justify-between"><span>INVOICE:</span><span className="font-bold">{bill.txn_no}</span></div>
               <div className="flex justify-between"><span>Date:</span><span>{bill.date}</span></div>
+              {(bill.staff_name || bill.staff_code) && (
+                <div className="flex justify-between text-slate-800">
+                  <span>Staff / Billed:</span>
+                  <span className="font-bold">{bill.staff_name} {bill.staff_code ? `(${bill.staff_code})` : ''}</span>
+                </div>
+              )}
               <div className="flex justify-between"><span>Customer:</span><span className="font-bold truncate">{bill.party_name}</span></div>
             </div>
             <div className="border-b border-dashed border-slate-800 my-1.5" />

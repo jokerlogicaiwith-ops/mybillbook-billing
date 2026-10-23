@@ -265,6 +265,8 @@ app.post('/api/items/:id/adjust-stock', (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
 // 4.5. Staff & Sales Commission APIs
 app.get('/api/staff', (req, res) => {
   try {
@@ -623,6 +625,7 @@ app.post('/api/transactions', (req, res) => {
       discount,
       amount,
       paid_amount,
+      payment_type,
       notes,
       staff_id,
       staff_code,

@@ -26,6 +26,10 @@ export default function CreateInvoiceModal({
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Staff and Commission state
+  const [staffList, setStaffList] = useState([]);
+  const [selectedStaffId, setSelectedStaffId] = useState('');
+
   // Barcode Scanner State
   const [barcodeQuery, setBarcodeQuery] = useState('');
   const [scanFeedback, setScanFeedback] = useState(null);
@@ -52,6 +56,7 @@ export default function CreateInvoiceModal({
       setTxnType(initialType);
       fetchParties();
       fetchItems();
+      fetchStaff();
       generateSuggestedTxnNo(initialType);
       setBarcodeQuery('');
       setScanFeedback(null);
@@ -98,6 +103,16 @@ export default function CreateInvoiceModal({
       setInventoryItems(data);
     } catch (err) {
       console.error('Failed to fetch items', err);
+    }
+  };
+
+  const fetchStaff = async () => {
+    try {
+      const res = await fetch('/api/staff');
+      const data = await res.json();
+      setStaffList(data);
+    } catch (err) {
+      console.error('Failed to fetch staff', err);
     }
   };
 
@@ -333,6 +348,8 @@ export default function CreateInvoiceModal({
 
     setIsSubmitting(true);
     try {
+      const currentStaff = staffList.find(s => s.id === parseInt(selectedStaffId));
+
       const payload = {
         txn_no: txnNo,
         type: txnType,
@@ -345,6 +362,10 @@ export default function CreateInvoiceModal({
         party_city: partyCity,
         party_state: partyState,
         party_pincode: partyPincode,
+        staff_id: currentStaff ? currentStaff.id : null,
+        staff_code: currentStaff ? currentStaff.staff_code : null,
+        staff_name: currentStaff ? currentStaff.name : null,
+        staff_commission_rate: currentStaff ? (parseFloat(currentStaff.commission_rate) || 0) : 0,
         subtotal: subtotal,
         discount: totalDiscount,
         tax_amount: totalTax,
@@ -503,6 +524,31 @@ export default function CreateInvoiceModal({
                     className="w-full text-xs font-mono font-bold text-blue-600 border border-slate-300 rounded-lg p-2 bg-white"
                     required
                   />
+                </div>
+
+                <div className="mt-2.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-700">
+                      Sales Staff / Billed By
+                    </label>
+                    {selectedStaffId && (
+                      <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
+                        {staffList.find(s => s.id === parseInt(selectedStaffId))?.commission_rate || 0}% Comm.
+                      </span>
+                    )}
+                  </div>
+                  <select
+                    value={selectedStaffId}
+                    onChange={(e) => setSelectedStaffId(e.target.value)}
+                    className="w-full text-xs font-semibold border border-slate-300 rounded-lg p-2 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">-- No Staff (Store Admin) --</option>
+                    {staffList.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.staff_code}) • {s.commission_rate}% Comm.
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -841,6 +887,13 @@ export default function CreateInvoiceModal({
                 <span>Total GST Tax:</span>
                 <span className="font-semibold text-blue-600">+ ₹{totalTax.toLocaleString('en-IN')}</span>
               </div>
+
+              {selectedStaffId && staffList.find(s => s.id === parseInt(selectedStaffId)) && (
+                <div className="flex justify-between text-emerald-700 bg-emerald-50 px-2 py-1 rounded text-[11px] font-semibold border border-emerald-200">
+                  <span>Staff Comm. ({staffList.find(s => s.id === parseInt(selectedStaffId))?.commission_rate}%):</span>
+                  <span>₹{Math.round((grandTotal * (parseFloat(staffList.find(s => s.id === parseInt(selectedStaffId))?.commission_rate || 0))) / 100).toLocaleString('en-IN')}</span>
+                </div>
+              )}
 
               <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-sm font-extrabold text-slate-900">
                 <span>Grand Total:</span>

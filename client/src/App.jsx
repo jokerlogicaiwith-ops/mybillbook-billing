@@ -11,6 +11,7 @@ import SalesInvoicesView from './components/SalesInvoicesView';
 import PurchasesView from './components/PurchasesView';
 import SettingsView from './components/SettingsView';
 import CustomerBillView from './components/CustomerBillView';
+import StaffView from './components/StaffView';
 import { Building2, Sparkles, ScanLine, FileSpreadsheet, ShieldAlert } from 'lucide-react';
 
 export default function App() {
@@ -91,6 +92,7 @@ export default function App() {
     switch (activeTab) {
       case 'dashboard': return 'Dashboard';
       case 'parties': return 'Parties (Customers & Vendors)';
+      case 'staff': return 'Staff & Sales Commission (स्टाफ व कमीशन)';
       case 'items': return 'Items & Inventory';
       case 'sales': return 'Sales Transactions';
       case 'purchases': return 'Purchase Bills & Vendors';
@@ -146,6 +148,13 @@ export default function App() {
           {activeTab === 'parties' && (
             <PartiesView 
               onOpenInvoiceModal={handleOpenInvoiceModal}
+            />
+          )}
+
+          {activeTab === 'staff' && (
+            <StaffView 
+              onOpenInvoiceModal={handleOpenInvoiceModal}
+              onViewInvoice={handleViewInvoice}
             />
           )}
 
