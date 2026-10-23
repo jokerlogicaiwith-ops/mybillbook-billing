@@ -364,6 +364,175 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
     setIsBulkDropdownOpen(false);
   };
 
+  // Print all items on a single clean A4 page (inventory list report)
+  const handlePrintItemList = () => {
+    const list = selectedItemIds.length > 0 
+      ? items.filter(it => selectedItemIds.includes(it.id)) 
+      : filteredItems;
+
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+
+    let rowsHtml = '';
+    list.forEach((item, idx) => {
+      rowsHtml += `
+        <tr>
+          <td style="text-align: center; width: 30px;">${idx + 1}</td>
+          <td><strong>${item.name}</strong>${item.category ? `<br><span style="color:#64748b;font-size:10px;">${item.category}</span>` : ''}</td>
+          <td style="font-family: monospace; font-weight: 600;">${item.item_code || '-'}</td>
+          <td style="text-align: center; font-weight: 600;">${item.stock_qty || 0} ${item.unit || 'PCS'}</td>
+          <td style="text-align: right; font-weight: 700;">₹ ${Number(item.sale_price || 0).toLocaleString('en-IN')}</td>
+          <td style="text-align: right; color: #475569;">₹ ${Number(item.purchase_price || 0).toLocaleString('en-IN')}</td>
+        </tr>
+      `;
+    });
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Items Inventory List - ${companyName || 'APOORV'}</title>
+          <style>
+            * { box-sizing: border-box; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; font-size: 11px; color: #0f172a; margin: 0; }
+            @page { size: A4 portrait; margin: 8mm; }
+            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #334155; padding-bottom: 8px; margin-bottom: 12px; }
+            .header h1 { margin: 0; font-size: 18px; color: #0f172a; }
+            .header p { margin: 2px 0 0; color: #64748b; font-size: 10px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; }
+            th { background: #f8fafc; padding: 6px 8px; text-align: left; font-size: 10px; border-bottom: 1px solid #cbd5e1; text-transform: uppercase; color: #475569; }
+            td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }
+            .footer { margin-top: 15px; font-size: 10px; color: #64748b; display: flex; justify-content: space-between; border-top: 1px solid #e2e8f0; padding-top: 8px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <h1>${companyName || 'APOORV'}</h1>
+              <p>Items Inventory & Stock Report (${list.length} Items)</p>
+            </div>
+            <div style="text-align: right;">
+              <p><strong>Date:</strong> ${new Date().toLocaleDateString('en-IN')}</p>
+              <p><strong>Total Items:</strong> ${list.length}</p>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align: center;">#</th>
+                <th>Item Name</th>
+                <th>Item Code / Barcode</th>
+                <th style="text-align: center;">Stock Qty</th>
+                <th style="text-align: right;">Sale Price</th>
+                <th style="text-align: right;">Purchase Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+          <div class="footer">
+            <span>Generated from vsrm.shop (MyBillBook)</span>
+            <span>Printed on 1 Page (A4 Format)</span>
+          </div>
+          <script>
+            window.onload = function() { window.print(); };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    setIsBulkDropdownOpen(false);
+  };
+
+  // Print all barcode stickers on an A4 sheet (3 cols x 8 rows = 24 per page)
+  const handlePrintAllBarcodes = () => {
+    const printItems = selectedItemIds.length > 0 
+      ? items.filter(it => selectedItemIds.includes(it.id)) 
+      : items.filter(it => it.item_code);
+
+    if (printItems.length === 0) {
+      alert('Koi barcode item nahi mila print karne ke liye.');
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) return;
+
+    let stickersHtml = '';
+    printItems.forEach(item => {
+      const code = item.item_code || String(item.id);
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      try {
+        JsBarcode(svg, code, {
+          format: 'CODE128',
+          width: 1.8,
+          height: 38,
+          displayValue: false,
+          margin: 0
+        });
+      } catch (e) {}
+
+      stickersHtml += `
+        <div class="a4-label">
+          <div class="company">${companyName || 'APOORV'}</div>
+          <div class="barcode-svg">${svg.outerHTML}</div>
+          <div class="code-text">${code}</div>
+          <div class="item-name">${item.name || ''}</div>
+          ${item.sale_price > 0 ? `<div class="price">SP: ₹${item.sale_price}</div>` : ''}
+        </div>
+      `;
+    });
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Print All Barcodes - ${companyName || 'APOORV'}</title>
+          <style>
+            * { box-sizing: border-box; }
+            body { margin: 0; padding: 2mm; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #fff; }
+            @page { size: A4 portrait; margin: 6mm 4mm; }
+            .a4-grid {
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 2.5mm;
+            }
+            .a4-label {
+              border: 1px dashed #cbd5e1;
+              border-radius: 4px;
+              padding: 2.5mm 1.5mm;
+              height: 33mm;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              overflow: hidden;
+              page-break-inside: avoid;
+              text-align: center;
+            }
+            .company { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1px; }
+            .barcode-svg svg { width: 44mm; height: 13mm; }
+            .code-text { font-size: 11px; font-weight: 700; letter-spacing: 2px; font-family: monospace; margin: 1px 0 0 0; }
+            .item-name { font-size: 8.5px; font-weight: 800; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46mm; margin-top: 1px; }
+            .price { font-size: 9px; font-weight: 800; color: #000; }
+          </style>
+        </head>
+        <body>
+          <div class="a4-grid">${stickersHtml}</div>
+          <script>
+            window.onload = function() { window.print(); };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    setIsBulkDropdownOpen(false);
+  };
+
   // Truncate code to 8 chars with ellipsis like in screenshot: 99939145...
   const formatItemCode = (code) => {
     if (!code) return '-';
@@ -674,23 +843,29 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
                   <span>Bulk Actions</span>
                 </button>
                 {isBulkDropdownOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50 text-xs font-medium">
+                  <div className="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-xl border border-slate-200 py-1 z-50 text-xs font-medium animate-in fade-in duration-100">
+                    <button
+                      onClick={handlePrintAllBarcodes}
+                      className="w-full text-left px-3 py-2 hover:bg-indigo-50/70 flex items-center space-x-2 text-indigo-700 font-bold"
+                      title="Sabhi items ke barcode stickers ek hi A4 sheet par print karein"
+                    >
+                      <ScanLine className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Print All Barcodes (A4 Sheet)</span>
+                    </button>
+                    <button
+                      onClick={handlePrintItemList}
+                      className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center space-x-2 text-slate-800 font-semibold"
+                      title="Sabhi items ki list ek clean A4 page par print karein"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Print All Items (1 Page List)</span>
+                    </button>
                     <button
                       onClick={handleExportCSV}
                       className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center space-x-2 text-slate-700"
                     >
                       <Download className="w-3.5 h-3.5 text-slate-500" />
                       <span>Export to Excel/CSV</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        window.print();
-                        setIsBulkDropdownOpen(false);
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center space-x-2 text-slate-700"
-                    >
-                      <Printer className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Print Item List</span>
                     </button>
                     {selectedItemIds.length > 0 && (
                       <button

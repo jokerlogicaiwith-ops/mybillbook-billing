@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Printer, Download, Sparkles, Copy, Layers } from 'lucide-react';
+import { X, Printer, Download, Sparkles, Copy, Layers, QrCode, Barcode } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
+import QRCode from 'qrcode';
 
 export default function ViewBarcodeModal({ isOpen, onClose, item, companyName = 'APOORV' }) {
   const svgRef = useRef(null);
   const [copies, setCopies] = useState(1);
   const [layout, setLayout] = useState('thermal'); // 'thermal' (50x35mm) or 'a4' (24-up sticker sheet)
+  const [codeType, setCodeType] = useState('barcode'); // 'barcode' | 'qrcode'
+  const [qrSvg, setQrSvg] = useState('');
 
   const barcodeValue = item?.item_code || (item?.id ? `7064${String(item.id).padStart(8, '0')}` : '790897163484');
   const itemName = item?.name || 'DEMO ITEM';
@@ -13,22 +16,30 @@ export default function ViewBarcodeModal({ isOpen, onClose, item, companyName = 
   const displayCompany = companyName || 'APOORV';
 
   useEffect(() => {
-    if (isOpen && svgRef.current && barcodeValue) {
-      try {
-        JsBarcode(svgRef.current, barcodeValue, {
-          format: 'CODE128',
-          width: 2.2,
-          height: 56,
-          displayValue: false, // We render the exact number underneath matching screenshot
-          margin: 0,
-          background: '#ffffff',
-          lineColor: '#000000'
-        });
-      } catch (err) {
-        console.error('JsBarcode rendering error:', err);
+    if (!isOpen || !barcodeValue) return;
+
+    if (codeType === 'qrcode') {
+      QRCode.toString(String(barcodeValue), { type: 'svg', margin: 1, width: 140 })
+        .then(svg => setQrSvg(svg))
+        .catch(err => console.error(err));
+    } else {
+      if (svgRef.current) {
+        try {
+          JsBarcode(svgRef.current, barcodeValue, {
+            format: 'CODE128',
+            width: 2.2,
+            height: 56,
+            displayValue: false,
+            margin: 0,
+            background: '#ffffff',
+            lineColor: '#000000'
+          });
+        } catch (err) {
+          console.error('JsBarcode rendering error:', err);
+        }
       }
     }
-  }, [isOpen, barcodeValue]);
+  }, [isOpen, barcodeValue, codeType]);
 
   if (!isOpen) return null;
 
@@ -39,18 +50,17 @@ export default function ViewBarcodeModal({ isOpen, onClose, item, companyName = 
       return;
     }
 
-    const svgHtml = svgRef.current ? svgRef.current.outerHTML : '';
+    const graphicHtml = codeType === 'qrcode' ? qrSvg : (svgRef.current ? svgRef.current.outerHTML : '');
     const numCopies = Math.max(1, parseInt(copies) || 1);
 
     let contentHtml = '';
 
     if (layout === 'thermal') {
-      // Thermal label roll: 50mm x 35mm per sticker, page-break per label
       for (let i = 0; i < numCopies; i++) {
         contentHtml += `
-          <div class="thermal-label">
+          <div class="thermal-label ${codeType === 'qrcode' ? 'layout-qr' : 'layout-barcode'}">
             <div class="company">${displayCompany}</div>
-            <div class="barcode-svg">${svgHtml}</div>
+            <div class="code-graphic">${graphicHtml}</div>
             <div class="code-text">${barcodeValue}</div>
             ${itemName !== 'NEW ITEM' && itemName !== 'DEMO ITEM' ? `<div class="item-name">${itemName}</div>` : ''}
             ${salePrice > 0 ? `<div class="price">SP: ₹${salePrice}</div>` : ''}
@@ -58,13 +68,12 @@ export default function ViewBarcodeModal({ isOpen, onClose, item, companyName = 
         `;
       }
     } else {
-      // A4 Sheet: 3 columns x 8 rows = 24 stickers per sheet
       contentHtml = `<div class="a4-grid">`;
       for (let i = 0; i < numCopies; i++) {
         contentHtml += `
-          <div class="a4-label">
+          <div class="a4-label ${codeType === 'qrcode' ? 'layout-qr' : 'layout-barcode'}">
             <div class="company">${displayCompany}</div>
-            <div class="barcode-svg">${svgHtml}</div>
+            <div class="code-graphic">${graphicHtml}</div>
             <div class="code-text">${barcodeValue}</div>
             ${itemName !== 'NEW ITEM' && itemName !== 'DEMO ITEM' ? `<div class="item-name">${itemName}</div>` : ''}
             ${salePrice > 0 ? `<div class="price">SP: ₹${salePrice}</div>` : ''}
@@ -78,7 +87,7 @@ export default function ViewBarcodeModal({ isOpen, onClose, item, companyName = 
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Print Barcode - ${displayCompany} - ${barcodeValue}</title>
+          <title>Print ${codeType === 'qrcode' ? 'QR Code' : 'Barcode'} - ${displayCompany} - ${barcodeValue}</title>
           <style>
             * { box-sizing: border-box; }
             body {
@@ -111,9 +120,13 @@ export default function ViewBarcodeModal({ isOpen, onClose, item, companyName = 
               text-transform: uppercase;
               margin-bottom: 2px;
             }
-            .thermal-label .barcode-svg svg {
+            .thermal-label .code-graphic svg {
               width: 44mm;
               height: 14mm;
+            }
+            .thermal-label.layout-qr .code-graphic svg {
+              width: 15mm;
+              height: 15mm;
             }
             .thermal-label .code-text {
               font-size: 12px;
@@ -160,9 +173,13 @@ export default function ViewBarcodeModal({ isOpen, onClose, item, companyName = 
               text-transform: uppercase;
               letter-spacing: 0.5px;
             }
-            .a4-label .barcode-svg svg {
+            .a4-label .code-graphic svg {
               width: 46mm;
               height: 13mm;
+            }
+            .a4-label.layout-qr .code-graphic svg {
+              width: 14mm;
+              height: 14mm;
             }
             .a4-label .code-text {
               font-size: 11px;
@@ -201,13 +218,9 @@ export default function ViewBarcodeModal({ isOpen, onClose, item, companyName = 
   };
 
   const handleDownload = () => {
-    if (!svgRef.current) return;
-    
-    const svgElement = svgRef.current;
-    const svgString = new XMLSerializer().serializeToString(svgElement);
     const canvas = document.createElement('canvas');
     canvas.width = 460;
-    canvas.height = 240;
+    canvas.height = 260;
     const ctx = canvas.getContext('2d');
     
     ctx.fillStyle = '#ffffff';
@@ -218,30 +231,41 @@ export default function ViewBarcodeModal({ isOpen, onClose, item, companyName = 
     ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(displayCompany.toUpperCase(), canvas.width / 2, 42);
+
+    const svgString = codeType === 'qrcode' 
+      ? qrSvg 
+      : (svgRef.current ? new XMLSerializer().serializeToString(svgRef.current) : '');
     
     const img = new Image();
     const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(svgBlob);
     
     img.onload = () => {
-      const barcodeWidth = 320;
-      const barcodeHeight = 70;
-      ctx.drawImage(img, (canvas.width - barcodeWidth) / 2, 58, barcodeWidth, barcodeHeight);
-      
-      ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", monospace';
-      ctx.fillStyle = '#0f172a';
-      ctx.fillText(barcodeValue, canvas.width / 2, 155);
+      if (codeType === 'qrcode') {
+        const qrSize = 100;
+        ctx.drawImage(img, (canvas.width - qrSize) / 2, 55, qrSize, qrSize);
+        ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Segoe UI", monospace';
+        ctx.fillStyle = '#0f172a';
+        ctx.fillText(barcodeValue, canvas.width / 2, 180);
+      } else {
+        const barcodeWidth = 320;
+        const barcodeHeight = 70;
+        ctx.drawImage(img, (canvas.width - barcodeWidth) / 2, 58, barcodeWidth, barcodeHeight);
+        ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", monospace';
+        ctx.fillStyle = '#0f172a';
+        ctx.fillText(barcodeValue, canvas.width / 2, 155);
+      }
 
       if (itemName && itemName !== 'NEW ITEM' && itemName !== 'DEMO ITEM') {
         ctx.font = 'bold 14px sans-serif';
         ctx.fillStyle = '#334155';
-        ctx.fillText(itemName.toUpperCase(), canvas.width / 2, 185);
+        ctx.fillText(itemName.toUpperCase(), canvas.width / 2, 210);
       }
       
       URL.revokeObjectURL(url);
       
       const link = document.createElement('a');
-      link.download = `barcode-${barcodeValue}.png`;
+      link.download = `${codeType}-${barcodeValue}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     };
@@ -252,9 +276,36 @@ export default function ViewBarcodeModal({ isOpen, onClose, item, companyName = 
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-2xs p-4 animate-in fade-in duration-150">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200">
         
-        {/* Header - Identical to myBillBook screenshot */}
+        {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-base font-bold text-slate-800">View Barcode</h3>
+          <div className="flex items-center space-x-2">
+            <h3 className="text-base font-bold text-slate-800">
+              {codeType === 'qrcode' ? 'View & Print QR Code' : 'View & Print Barcode'}
+            </h3>
+            {/* Toggle Barcode vs QR code */}
+            <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+              <button
+                type="button"
+                onClick={() => setCodeType('barcode')}
+                className={`px-2 py-0.5 rounded font-bold transition flex items-center space-x-1 ${
+                  codeType === 'barcode' ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Barcode className="w-3 h-3" />
+                <span>Barcode</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCodeType('qrcode')}
+                className={`px-2 py-0.5 rounded font-bold transition flex items-center space-x-1 ${
+                  codeType === 'qrcode' ? 'bg-indigo-600 text-white shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <QrCode className="w-3 h-3" />
+                <span>QR Code</span>
+              </button>
+            </div>
+          </div>
           <button 
             onClick={onClose}
             className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
@@ -263,24 +314,37 @@ export default function ViewBarcodeModal({ isOpen, onClose, item, companyName = 
           </button>
         </div>
 
-        {/* Modal Center Barcode Display - Exact 1:1 Match with User's myBillBook Screenshot */}
-        <div className="p-8 flex flex-col items-center justify-center bg-white">
-          <div className="w-full flex flex-col items-center text-center py-4">
+        {/* Modal Center Code Display */}
+        <div className="p-8 flex flex-col items-center justify-center bg-white min-h-[200px]">
+          <div className="w-full flex flex-col items-center text-center py-2">
             
             {/* Company Name */}
             <h2 className="text-lg font-black text-slate-900 tracking-wider uppercase mb-3">
               {displayCompany}
             </h2>
 
-            {/* Barcode Lines */}
-            <div className="flex justify-center my-1 w-full overflow-hidden">
-              <svg ref={svgRef} className="max-w-full"></svg>
-            </div>
+            {/* Barcode Lines or QR Code */}
+            {codeType === 'qrcode' ? (
+              <div 
+                className="w-32 h-32 flex items-center justify-center p-1 bg-white border border-slate-200 rounded-lg shadow-2xs [&>svg]:w-full [&>svg]:h-full my-1"
+                dangerouslySetInnerHTML={{ __html: qrSvg }}
+              />
+            ) : (
+              <div className="flex justify-center my-1 w-full overflow-hidden">
+                <svg ref={svgRef} className="max-w-full"></svg>
+              </div>
+            )}
 
-            {/* Barcode Number Below Lines */}
+            {/* Code Number Below */}
             <div className="text-xl font-bold tracking-[0.25em] text-slate-900 mt-2 font-mono">
               {barcodeValue}
             </div>
+
+            {itemName && (
+              <div className="text-xs font-bold text-slate-700 uppercase mt-1">
+                {itemName}
+              </div>
+            )}
           </div>
         </div>
 
@@ -349,7 +413,7 @@ export default function ViewBarcodeModal({ isOpen, onClose, item, companyName = 
             className="flex-1 inline-flex items-center justify-center space-x-1.5 px-4 py-2.5 bg-[#6366f1] hover:bg-[#4f46e5] text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition"
           >
             <Printer className="w-4 h-4 stroke-[2.5]" />
-            <span>Print {copies} Barcode Sticker{copies > 1 ? 's' : ''}</span>
+            <span>Print {copies} {codeType === 'qrcode' ? 'QR' : 'Barcode'} Sticker{copies > 1 ? 's' : ''}</span>
           </button>
         </div>
 
