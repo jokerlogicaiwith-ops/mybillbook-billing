@@ -2,14 +2,54 @@
   "company_settings": [
     {
       "id": 1,
-      "name": "APOORV",
-      "phone": "8130140936",
-      "email": "apoorv@enterprise.com",
-      "gstin": "10AABCA1234F1Z5",
-      "address": "Station Road, Samastipur, Bihar - 848101",
-      "upi_id": "8130140936@upi",
-      "tagline": "Quality Feeds & Engineering Solutions",
-      "terms": "1. Goods once sold will not be taken back.\n2. Interest @ 18% p.a. will be charged if payment is not received within due date.\n3. Subject to Samastipur jurisdiction."
+      "name": "VSRM COMPUTER CLASSES",
+      "phone": "8936863035",
+      "email": "contact@vsrm.in",
+      "gstin": "10ABFCA4659J1ZQ",
+      "is_gst_registered": true,
+      "address": "Near Kashipur Chowk Samastipur 848101",
+      "billing_address": "Near Kashipur Chowk Samastipur 848101",
+      "city": "SAMASTIPUR",
+      "state": "Bihar",
+      "pincode": "848101",
+      "business_type": "Retailer, Wholesaler, Distributor, Manufacturer, Services",
+      "industry_type": "Education-Schooling/Coaching",
+      "registration_type": "Proprietorship",
+      "upi_id": "8936863035@upi",
+      "tagline": "Education & Computer Training Institute",
+      "terms": "1. Fees / Goods once sold will not be refunded.\n2. Invoices are subject to Samastipur jurisdiction.\n3. Thank you for your business!"
+    }
+  ],
+  "staff": [
+    {
+      "id": 1,
+      "staff_code": "STF-101",
+      "name": "Rahul Sharma",
+      "phone": "9876501234",
+      "role": "Senior Sales Executive",
+      "commission_rate": 5.0,
+      "status": "Active",
+      "created_at": "2026-10-20"
+    },
+    {
+      "id": 2,
+      "staff_code": "STF-102",
+      "name": "Amit Kumar",
+      "phone": "9835123456",
+      "role": "Sales Associate",
+      "commission_rate": 3.0,
+      "status": "Active",
+      "created_at": "2026-10-21"
+    },
+    {
+      "id": 3,
+      "staff_code": "STF-103",
+      "name": "Pooja Singh",
+      "phone": "9430987654",
+      "role": "Billing & Counter Executive",
+      "commission_rate": 4.0,
+      "status": "Active",
+      "created_at": "2026-10-22"
     }
   ],
   "parties": [
@@ -22,7 +62,7 @@
       "address": "Market Complex, Patna",
       "state": "Bihar",
       "opening_balance": 0,
-      "current_balance": 1818770
+      "current_balance": 1818800
     },
     {
       "id": 2,
@@ -282,7 +322,7 @@
       "purchase_price": 0,
       "wholesale_price": 0,
       "tax_rate": 18,
-      "stock_qty": 0,
+      "stock_qty": -1,
       "low_stock_limit": 5
     },
     {
@@ -312,9 +352,44 @@
       "tax_rate": 18,
       "stock_qty": 5,
       "low_stock_limit": 5
+    },
+    {
+      "id": 16,
+      "name": "cctv",
+      "item_code": "706496480290",
+      "hsn_code": "hjhu",
+      "category": "IT",
+      "unit": "PCS",
+      "sale_price": 100,
+      "purchase_price": 80,
+      "tax_rate": 18,
+      "stock_qty": 0,
+      "low_stock_limit": 5
     }
   ],
   "transactions": [
+    {
+      "id": 31,
+      "txn_no": "A/SL-5706",
+      "type": "Sales Invoices",
+      "date": "2026-10-23",
+      "party_id": 1,
+      "party_name": "AVYAAN",
+      "subtotal": 25,
+      "tax_amount": 4.5,
+      "discount": 0,
+      "amount": 30,
+      "paid_amount": 0,
+      "balance_due": 30,
+      "payment_type": "Credit",
+      "status": "Unpaid",
+      "notes": "",
+      "staff_id": 1,
+      "staff_code": "STF-101",
+      "staff_name": "Rahul Sharma",
+      "staff_commission_rate": 5,
+      "staff_commission_amount": 1.5
+    },
     {
       "id": 1,
       "txn_no": "A/SL/1222",
@@ -932,6 +1007,20 @@
       "tax_rate": 18,
       "tax_amount": 8100,
       "total": 53100
+    },
+    {
+      "id": 2,
+      "transaction_id": 31,
+      "item_id": 13,
+      "item_name": "BNC & DC CONNECTOR",
+      "hsn_code": "8536",
+      "quantity": 1,
+      "unit": "PCS",
+      "rate": 25,
+      "discount": 0,
+      "tax_rate": 18,
+      "tax_amount": 4.5,
+      "total": 29.5
     }
   ],
   "bank_accounts": [
@@ -940,7 +1029,7 @@
       "name": "Cash in Hand",
       "account_number": "CASH",
       "ifsc": "",
-      "balance": 45805
+      "balance": 45923
     },
     {
       "id": 2,

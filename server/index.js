@@ -26,12 +26,20 @@ app.get('/api/company', (req, res) => {
 
 app.put('/api/company', (req, res) => {
   try {
-    const { name, phone, email, gstin, address, upi_id, tagline, terms } = req.body;
+    const { 
+      name, phone, email, gstin, address, upi_id, tagline, terms,
+      billing_address, city, state, pincode, is_gst_registered,
+      business_type, industry_type, registration_type
+    } = req.body;
     db.prepare(`
       UPDATE company_settings 
       SET name = ?, phone = ?, email = ?, gstin = ?, address = ?, upi_id = ?, tagline = ?, terms = ?
       WHERE id = 1
-    `).run(name, phone, email, gstin, address, upi_id, tagline, terms);
+    `).run(
+      name, phone, email, gstin, address || billing_address, upi_id, tagline, terms,
+      billing_address, city, state, pincode, is_gst_registered,
+      business_type, industry_type, registration_type
+    );
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -257,6 +265,99 @@ app.post('/api/items/:id/adjust-stock', (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+// 4.5. Staff & Sales Commission APIs
+app.get('/api/staff', (req, res) => {
+  try {
+    const staffList = db.prepare('SELECT * FROM staff').all();
+    const allTxns = db.prepare('SELECT * FROM transactions').all();
+    
+    const enriched = staffList.map(s => {
+      const staffTxns = allTxns.filter(t => 
+        (t.staff_id === s.id) || 
+        (t.staff_code && t.staff_code === s.staff_code) ||
+        (t.staff_name && t.staff_name.toLowerCase() === s.name.toLowerCase())
+      );
+      const totalSales = staffTxns.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+      const totalCommission = staffTxns.reduce((sum, t) => {
+        if (t.staff_commission_amount) return sum + parseFloat(t.staff_commission_amount);
+        const rate = parseFloat(s.commission_rate) || 0;
+        return sum + ((parseFloat(t.amount) || 0) * rate) / 100;
+      }, 0);
+
+      return {
+        ...s,
+        total_sales_count: staffTxns.length,
+        total_sales_amount: totalSales,
+        total_commission: totalCommission,
+        recent_sales: staffTxns.slice(0, 5)
+      };
+    });
+
+    res.json(enriched);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/staff', (req, res) => {
+  try {
+    const { name, staff_code, phone, role, commission_rate, status } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Staff name is required' });
+    }
+
+    let code = staff_code;
+    if (!code || !code.trim()) {
+      const existing = db.prepare('SELECT * FROM staff').all();
+      code = `STF-${101 + existing.length}`;
+    }
+
+    const info = db.prepare(`
+      INSERT INTO staff (staff_code, name, phone, role, commission_rate, status)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      code.trim().toUpperCase(),
+      name.trim(),
+      phone || '',
+      role || 'Sales Executive',
+      parseFloat(commission_rate) || 0,
+      status || 'Active'
+    );
+
+    res.json({ success: true, id: info.lastInsertRowid, staff_code: code });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/staff/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, phone, role, commission_rate, status } = req.body;
+    db.prepare(`
+      UPDATE staff SET name = ?, phone = ?, role = ?, commission_rate = ?, status = ? WHERE id = ?
+    `).run(
+      name,
+      phone || '',
+      role || 'Sales Executive',
+      parseFloat(commission_rate) || 0,
+      status || 'Active',
+      id
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/staff/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    db.prepare('DELETE FROM staff WHERE id = ?').run(id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 5. Transactions / Invoices APIs
@@ -422,7 +523,28 @@ app.get('/api/transactions/:id', (req, res) => {
     if (!txn) return res.status(404).json({ error: 'Transaction not found' });
 
     const items = db.prepare('SELECT * FROM transaction_items WHERE transaction_id = ?').all(req.params.id);
-    const party = txn.party_id ? db.prepare('SELECT * FROM parties WHERE id = ?').get(txn.party_id) : null;
+    let party = txn.party_id ? db.prepare('SELECT * FROM parties WHERE id = ?').get(txn.party_id) : null;
+    if (!party) {
+      party = {
+        name: txn.party_name,
+        phone: txn.party_phone || '',
+        gstin: txn.party_gstin || '',
+        address: txn.party_address || '',
+        city: txn.party_city || '',
+        state: txn.party_state || 'Bihar',
+        pincode: txn.party_pincode || ''
+      };
+    } else {
+      party = {
+        ...party,
+        phone: txn.party_phone || party.phone || '',
+        gstin: txn.party_gstin || party.gstin || '',
+        address: txn.party_address || party.address || '',
+        city: txn.party_city || party.city || '',
+        state: txn.party_state || party.state || 'Bihar',
+        pincode: txn.party_pincode || party.pincode || ''
+      };
+    }
     const company = db.prepare('SELECT * FROM company_settings LIMIT 1').get();
 
     res.json({
@@ -447,8 +569,29 @@ app.get('/api/public/bill/:identifier', (req, res) => {
     if (!txn) return res.status(404).json({ error: 'Invoice not found' });
 
     const items = db.prepare('SELECT * FROM transaction_items WHERE transaction_id = ?').all(txn.id);
-    const party = txn.party_id ? db.prepare('SELECT id, name, phone, gstin, address, state FROM parties WHERE id = ?').get(txn.party_id) : null;
-    const company = db.prepare('SELECT name, phone, email, gstin, address, upi_id, tagline, terms FROM company_settings LIMIT 1').get();
+    let party = txn.party_id ? db.prepare('SELECT id, name, phone, gstin, address, city, state, pincode FROM parties WHERE id = ?').get(txn.party_id) : null;
+    if (!party) {
+      party = {
+        name: txn.party_name,
+        phone: txn.party_phone || '',
+        gstin: txn.party_gstin || '',
+        address: txn.party_address || '',
+        city: txn.party_city || '',
+        state: txn.party_state || 'Bihar',
+        pincode: txn.party_pincode || ''
+      };
+    } else {
+      party = {
+        ...party,
+        phone: txn.party_phone || party.phone || '',
+        gstin: txn.party_gstin || party.gstin || '',
+        address: txn.party_address || party.address || '',
+        city: txn.party_city || party.city || '',
+        state: txn.party_state || party.state || 'Bihar',
+        pincode: txn.party_pincode || party.pincode || ''
+      };
+    }
+    const company = db.prepare('SELECT * FROM company_settings LIMIT 1').get();
 
     res.json({
       ...txn,
@@ -469,13 +612,22 @@ app.post('/api/transactions', (req, res) => {
       date,
       party_id,
       party_name,
+      party_phone,
+      party_gstin,
+      party_address,
+      party_city,
+      party_state,
+      party_pincode,
       subtotal,
       tax_amount,
       discount,
       amount,
       paid_amount,
-      payment_type,
       notes,
+      staff_id,
+      staff_code,
+      staff_name,
+      staff_commission_rate,
       items // Array of items
     } = req.body;
 
@@ -483,6 +635,8 @@ app.post('/api/transactions', (req, res) => {
     const paidAmt = parseFloat(paid_amount) || 0;
     const balanceDue = Math.max(0, totalAmt - paidAmt);
     const status = balanceDue === 0 ? 'Paid' : (paidAmt > 0 ? 'Partial' : 'Unpaid');
+    const commRate = parseFloat(staff_commission_rate) || 0;
+    const commAmt = (totalAmt * commRate) / 100;
 
     // Auto-generate txn_no if blank
     let generatedNo = txn_no;
@@ -492,12 +646,14 @@ app.post('/api/transactions', (req, res) => {
       generatedNo = `${prefix}-${Date.now().toString().slice(-4)}-${countRow.count + 1}`;
     }
 
-    // Insert transaction
+    // Insert transaction with party snapshot and staff attribution
     const insertTxnStmt = db.prepare(`
       INSERT INTO transactions (
         txn_no, type, date, party_id, party_name, subtotal, tax_amount, discount, 
-        amount, paid_amount, balance_due, payment_type, status, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        amount, paid_amount, balance_due, payment_type, status, notes,
+        party_phone, party_gstin, party_address, party_city, party_state, party_pincode,
+        staff_id, staff_code, staff_name, staff_commission_rate, staff_commission_amount
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = insertTxnStmt.run(
@@ -514,7 +670,18 @@ app.post('/api/transactions', (req, res) => {
       balanceDue,
       payment_type || 'Credit',
       status,
-      notes || ''
+      notes || '',
+      party_phone || '',
+      party_gstin || '',
+      party_address || '',
+      party_city || '',
+      party_state || 'Bihar',
+      party_pincode || '',
+      staff_id ? Number(staff_id) : null,
+      staff_code || '',
+      staff_name || '',
+      commRate,
+      commAmt
     );
 
     const transactionId = result.lastInsertRowid;

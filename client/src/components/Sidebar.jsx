@@ -17,7 +17,8 @@ import {
   Receipt,
   FileSpreadsheet,
   Repeat,
-  ScanLine
+  ScanLine,
+  Users2
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -88,14 +89,14 @@ export default function Sidebar({
       <div className="p-4 border-b border-slate-800/60 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-full bg-[#1d4ed8] text-white font-bold flex items-center justify-center text-lg shadow-sm">
-            {company?.name ? company.name.charAt(0) : 'A'}
+            {company?.name ? company.name.charAt(0) : 'V'}
           </div>
           <div className="overflow-hidden">
             <h2 className="font-semibold text-white text-sm tracking-wide truncate">
-              {company?.name || 'APOORV'}
+              {company?.name || 'VSRM COMPUTER CLASSES'}
             </h2>
             <p className="text-xs text-slate-400 font-mono">
-              {company?.phone || '8130140936'}
+              {company?.phone || '8936863035'}
             </p>
           </div>
         </div>
@@ -191,6 +192,24 @@ export default function Sidebar({
                 <span>Parties</span>
               </div>
               <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+            </button>
+
+            {/* Staff & Commission */}
+            <button
+              onClick={() => setActiveTab('staff')}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                activeTab === 'staff' 
+                  ? 'bg-[#232f4b] text-white shadow-xs font-semibold' 
+                  : 'hover:bg-slate-800/60 text-slate-300 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <Users2 className={`w-4 h-4 ${activeTab === 'staff' ? 'text-indigo-400' : 'text-slate-400'}`} />
+                <span>Staff & Commission</span>
+              </div>
+              <span className="text-[10px] bg-indigo-900/60 text-indigo-300 font-bold px-1.5 py-0.2 rounded border border-indigo-700/50">
+                New
+              </span>
             </button>
 
             {/* Items (Accordion with Chevron) */}

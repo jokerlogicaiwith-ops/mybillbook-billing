@@ -101,6 +101,17 @@ function initSqliteDb(sqliteDb) {
       ifsc TEXT,
       balance REAL DEFAULT 0
     );
+
+    CREATE TABLE IF NOT EXISTS staff (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      staff_code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      phone TEXT,
+      role TEXT DEFAULT 'Sales Executive',
+      commission_rate REAL DEFAULT 2.0,
+      status TEXT DEFAULT 'Active',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   const companyCheck = sqliteDb.prepare('SELECT COUNT(*) as count FROM company_settings').get();
@@ -175,6 +186,14 @@ function createJsonDb() {
     if (fs.existsSync(jsonPath)) {
       try {
         store = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+        if (!store.staff || !Array.isArray(store.staff) || store.staff.length === 0) {
+          store.staff = [
+            { id: 1, staff_code: 'STF-101', name: 'Rahul Sharma', phone: '9876501234', role: 'Sales Executive', commission_rate: 5.0, status: 'Active', created_at: '2026-10-20' },
+            { id: 2, staff_code: 'STF-102', name: 'Amit Kumar', phone: '9835123456', role: 'Sales Associate', commission_rate: 3.0, status: 'Active', created_at: '2026-10-21' },
+            { id: 3, staff_code: 'STF-103', name: 'Pooja Singh', phone: '9430987654', role: 'Billing Counter', commission_rate: 4.0, status: 'Active', created_at: '2026-10-22' }
+          ];
+          saveStore();
+        }
         return store;
       } catch (e) {}
     }
@@ -192,6 +211,11 @@ function createJsonDb() {
         tagline: 'Quality Feeds & Engineering Solutions',
         terms: '1. Goods once sold will not be taken back.\n2. Interest @ 18% p.a. will be charged if payment is not received within due date.\n3. Subject to Samastipur jurisdiction.'
       }],
+      staff: [
+        { id: 1, staff_code: 'STF-101', name: 'Rahul Sharma', phone: '9876501234', role: 'Sales Executive', commission_rate: 5.0, status: 'Active', created_at: '2026-10-20' },
+        { id: 2, staff_code: 'STF-102', name: 'Amit Kumar', phone: '9835123456', role: 'Sales Associate', commission_rate: 3.0, status: 'Active', created_at: '2026-10-21' },
+        { id: 3, staff_code: 'STF-103', name: 'Pooja Singh', phone: '9430987654', role: 'Billing Counter', commission_rate: 4.0, status: 'Active', created_at: '2026-10-22' }
+      ],
       parties: [
         { id: 1, name: 'DIVYADRISHTI FEEDS PVT. LTD.', phone: '9876543210', type: 'customer', gstin: '10AAACD5544K1ZR', address: 'Industrial Area, Hajipur', state: 'Bihar', opening_balance: 0, current_balance: 2915916 },
         { id: 2, name: 'AVYAAN', phone: '9123456780', type: 'customer', gstin: '10BBBPB8899M1ZQ', address: 'Market Complex, Patna', state: 'Bihar', opening_balance: 0, current_balance: 47600 },
@@ -281,6 +305,15 @@ function createJsonDb() {
           if (cleanSql.includes('FROM bank_accounts LIMIT 1')) {
             return store.bank_accounts[0] || null;
           }
+          if (cleanSql.includes('FROM staff WHERE id = ?')) {
+            return (store.staff || []).find(s => s.id === Number(params[0])) || null;
+          }
+          if (cleanSql.includes('FROM staff WHERE staff_code = ?')) {
+            return (store.staff || []).find(s => s.staff_code === String(params[0])) || null;
+          }
+          if (cleanSql.includes('COUNT(*) as count FROM staff')) {
+            return { count: (store.staff || []).length };
+          }
           if (cleanSql.includes('SUM(amount) as total FROM transactions WHERE type =')) {
             const match = cleanSql.match(/type = '([^']+)'/);
             const type = match ? match[1] : '';
@@ -292,6 +325,10 @@ function createJsonDb() {
 
         all: (...params) => {
           loadStore();
+          if (cleanSql.includes('FROM staff')) {
+            let list = [...(store.staff || [])];
+            return list.sort((a, b) => a.name.localeCompare(b.name));
+          }
           if (cleanSql.includes('FROM transactions') && cleanSql.includes('party_id = ?')) {
             return store.transactions.filter(t => t.party_id === Number(params[0]));
           }
@@ -328,15 +365,50 @@ function createJsonDb() {
         run: (...params) => {
           loadStore();
           if (cleanSql.includes('UPDATE company_settings')) {
-            const [name, phone, email, gstin, address, upi_id, tagline, terms] = params;
-            store.company_settings[0] = { ...store.company_settings[0], name, phone, email, gstin, address, upi_id, tagline, terms };
+            if (typeof params[0] === 'object' && params[0] !== null) {
+              store.company_settings[0] = { ...store.company_settings[0], ...params[0] };
+            } else {
+              const [name, phone, email, gstin, address, upi_id, tagline, terms, billing_address, city, state, pincode, is_gst_registered, business_type, industry_type, registration_type] = params;
+              store.company_settings[0] = { 
+                ...store.company_settings[0], 
+                name: name !== undefined ? name : store.company_settings[0].name, 
+                phone: phone !== undefined ? phone : store.company_settings[0].phone, 
+                email: email !== undefined ? email : store.company_settings[0].email, 
+                gstin: gstin !== undefined ? gstin : store.company_settings[0].gstin, 
+                address: address !== undefined ? address : store.company_settings[0].address, 
+                upi_id: upi_id !== undefined ? upi_id : store.company_settings[0].upi_id, 
+                tagline: tagline !== undefined ? tagline : store.company_settings[0].tagline, 
+                terms: terms !== undefined ? terms : store.company_settings[0].terms,
+                billing_address: billing_address || address || store.company_settings[0].billing_address,
+                city: city || store.company_settings[0].city,
+                state: state || store.company_settings[0].state,
+                pincode: pincode || store.company_settings[0].pincode,
+                is_gst_registered: is_gst_registered !== undefined ? is_gst_registered : store.company_settings[0].is_gst_registered,
+                business_type: business_type || store.company_settings[0].business_type,
+                industry_type: industry_type || store.company_settings[0].industry_type,
+                registration_type: registration_type || store.company_settings[0].registration_type
+              };
+            }
             saveStore();
             return { changes: 1 };
           }
           if (cleanSql.includes('INSERT INTO parties')) {
-            const [name, phone, email, type, gstin, address, state, opening_balance, current_balance] = params;
+            const [name, phone, email, type, gstin, address, state, opening_balance, current_balance, city, pincode] = params;
             const newId = store.parties.length ? Math.max(...store.parties.map(p => p.id)) + 1 : 1;
-            store.parties.push({ id: newId, name, phone, email, type, gstin, address, state, opening_balance, current_balance });
+            store.parties.push({ 
+              id: newId, 
+              name, 
+              phone: phone || '', 
+              email: email || '', 
+              type: type || 'customer', 
+              gstin: gstin || '', 
+              address: address || '', 
+              city: city || '', 
+              state: state || 'Bihar', 
+              pincode: pincode || '', 
+              opening_balance: opening_balance || 0, 
+              current_balance: current_balance || 0 
+            });
             saveStore();
             return { lastInsertRowid: newId };
           }
@@ -347,10 +419,84 @@ function createJsonDb() {
             saveStore();
             return { lastInsertRowid: newId };
           }
+          if (cleanSql.includes('INSERT INTO staff')) {
+            const [staff_code, name, phone, role, commission_rate, status] = params;
+            const newId = (store.staff || []).length ? Math.max(...store.staff.map(s => s.id)) + 1 : 1;
+            const newStaff = {
+              id: newId,
+              staff_code: staff_code || `STF-${100 + newId}`,
+              name,
+              phone: phone || '',
+              role: role || 'Sales Executive',
+              commission_rate: parseFloat(commission_rate) || 0,
+              status: status || 'Active',
+              created_at: new Date().toISOString().split('T')[0]
+            };
+            if (!store.staff) store.staff = [];
+            store.staff.push(newStaff);
+            saveStore();
+            return { lastInsertRowid: newId };
+          }
+          if (cleanSql.includes('UPDATE staff SET')) {
+            const [name, phone, role, commission_rate, status, id] = params;
+            const staffMember = (store.staff || []).find(s => s.id === Number(id));
+            if (staffMember) {
+              staffMember.name = name;
+              staffMember.phone = phone || '';
+              staffMember.role = role || 'Sales Executive';
+              staffMember.commission_rate = parseFloat(commission_rate) || 0;
+              staffMember.status = status || 'Active';
+              saveStore();
+              return { changes: 1 };
+            }
+            return { changes: 0 };
+          }
+          if (cleanSql.includes('DELETE FROM staff WHERE id = ?')) {
+            const [id] = params;
+            const idx = (store.staff || []).findIndex(s => s.id === Number(id));
+            if (idx !== -1) {
+              store.staff.splice(idx, 1);
+              saveStore();
+              return { changes: 1 };
+            }
+            return { changes: 0 };
+          }
           if (cleanSql.includes('INSERT INTO transactions')) {
-            const [txn_no, type, date, party_id, party_name, subtotal, tax_amount, discount, amount, paid_amount, balance_due, payment_type, status, notes] = params;
+            const [
+              txn_no, type, date, party_id, party_name, subtotal, tax_amount, discount, 
+              amount, paid_amount, balance_due, payment_type, status, notes, 
+              party_phone, party_gstin, party_address, party_city, party_state, party_pincode,
+              staff_id, staff_code, staff_name, staff_commission_rate, staff_commission_amount
+            ] = params;
             const newId = store.transactions.length ? Math.max(...store.transactions.map(t => t.id)) + 1 : 1;
-            store.transactions.unshift({ id: newId, txn_no, type, date, party_id, party_name, subtotal, tax_amount, discount, amount, paid_amount, balance_due, payment_type, status, notes });
+            store.transactions.unshift({ 
+              id: newId, 
+              txn_no, 
+              type, 
+              date, 
+              party_id, 
+              party_name, 
+              subtotal, 
+              tax_amount, 
+              discount, 
+              amount, 
+              paid_amount, 
+              balance_due, 
+              payment_type, 
+              status, 
+              notes,
+              party_phone: party_phone || '',
+              party_gstin: party_gstin || '',
+              party_address: party_address || '',
+              party_city: party_city || '',
+              party_state: party_state || 'Bihar',
+              party_pincode: party_pincode || '',
+              staff_id: staff_id ? Number(staff_id) : null,
+              staff_code: staff_code || '',
+              staff_name: staff_name || '',
+              staff_commission_rate: parseFloat(staff_commission_rate) || 0,
+              staff_commission_amount: parseFloat(staff_commission_amount) || 0
+            });
             saveStore();
             return { lastInsertRowid: newId };
           }

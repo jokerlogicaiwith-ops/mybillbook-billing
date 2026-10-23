@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Plus, Trash2, Calculator, Check, ArrowRight, ScanLine, AlertTriangle, Sparkles } from 'lucide-react';
+import { X, Plus, Trash2, Calculator, Check, ArrowRight, ScanLine, AlertTriangle, Sparkles, MapPin } from 'lucide-react';
 
 export default function CreateInvoiceModal({ 
   isOpen, 
@@ -14,6 +14,11 @@ export default function CreateInvoiceModal({
   const [customPartyName, setCustomPartyName] = useState('');
   const [partyPhone, setPartyPhone] = useState('');
   const [partyGstin, setPartyGstin] = useState('');
+  const [partyAddress, setPartyAddress] = useState('');
+  const [partyCity, setPartyCity] = useState('SAMASTIPUR');
+  const [partyState, setPartyState] = useState('Bihar');
+  const [partyPincode, setPartyPincode] = useState('848101');
+  const [showAddressDetails, setShowAddressDetails] = useState(true);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [txnNo, setTxnNo] = useState('');
   const [paymentType, setPaymentType] = useState('Credit');
@@ -105,11 +110,19 @@ export default function CreateInvoiceModal({
         setCustomPartyName(party.name);
         setPartyPhone(party.phone || '');
         setPartyGstin(party.gstin || '');
+        setPartyAddress(party.address || '');
+        setPartyCity(party.city || 'SAMASTIPUR');
+        setPartyState(party.state || 'Bihar');
+        setPartyPincode(party.pincode || '848101');
       }
     } else {
       setCustomPartyName('');
       setPartyPhone('');
       setPartyGstin('');
+      setPartyAddress('');
+      setPartyCity('SAMASTIPUR');
+      setPartyState('Bihar');
+      setPartyPincode('848101');
     }
   };
 
@@ -326,6 +339,12 @@ export default function CreateInvoiceModal({
         date: date,
         party_id: selectedParty ? parseInt(selectedParty) : null,
         party_name: finalPartyName,
+        party_phone: partyPhone,
+        party_gstin: partyGstin,
+        party_address: partyAddress,
+        party_city: partyCity,
+        party_state: partyState,
+        party_pincode: partyPincode,
         subtotal: subtotal,
         discount: totalDiscount,
         tax_amount: totalTax,
@@ -410,80 +429,171 @@ export default function CreateInvoiceModal({
         {/* Modal Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
           
-          {/* Party and Date Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Party / Customer Name *
-              </label>
-              <select
-                value={selectedParty}
-                onChange={handlePartyChange}
-                className="w-full text-xs font-medium border border-slate-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-              >
-                <option value="">-- Select Existing Party or Enter Below --</option>
-                {parties.map(p => (
-                  <option key={p.id} value={p.id}>{p.name} {p.phone ? `(${p.phone})` : ''}</option>
-                ))}
-              </select>
-
-              {!selectedParty && (
-                <input
-                  type="text"
-                  placeholder="Or enter new party name..."
-                  value={customPartyName}
-                  onChange={(e) => setCustomPartyName(e.target.value)}
-                  className="w-full text-xs font-medium border border-slate-300 rounded-lg p-2 mt-2 bg-white focus:ring-2 focus:ring-blue-500"
-                />
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Phone & GSTIN
-              </label>
-              <input
-                type="text"
-                placeholder="Phone number"
-                value={partyPhone}
-                onChange={(e) => setPartyPhone(e.target.value)}
-                className="w-full text-xs border border-slate-300 rounded-lg p-2.5 bg-white mb-2"
-              />
-              <input
-                type="text"
-                placeholder="GSTIN (Optional)"
-                value={partyGstin}
-                onChange={(e) => setPartyGstin(e.target.value)}
-                className="w-full text-xs border border-slate-300 rounded-lg p-2 bg-white uppercase font-mono"
-              />
-            </div>
-
-            <div>
-              <div className="mb-2">
+          {/* Party, Date and MyBillBook Billing Address Section */}
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Invoice / Txn Date
+                  Party / Customer Name *
                 </label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full text-xs border border-slate-300 rounded-lg p-2 bg-white"
-                  required
-                />
+                <select
+                  value={selectedParty}
+                  onChange={handlePartyChange}
+                  className="w-full text-xs font-medium border border-slate-300 rounded-lg p-2.5 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                >
+                  <option value="">-- Select Existing Party or Enter Below --</option>
+                  {parties.map(p => (
+                    <option key={p.id} value={p.id}>{p.name} {p.phone ? `(${p.phone})` : ''}</option>
+                  ))}
+                </select>
+
+                {!selectedParty && (
+                  <input
+                    type="text"
+                    placeholder="Or enter new party name..."
+                    value={customPartyName}
+                    onChange={(e) => setCustomPartyName(e.target.value)}
+                    className="w-full text-xs font-medium border border-slate-300 rounded-lg p-2 mt-2 bg-white focus:ring-2 focus:ring-blue-500"
+                  />
+                )}
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Invoice / Bill No.
+                  Phone & GSTIN
                 </label>
                 <input
                   type="text"
-                  value={txnNo}
-                  onChange={(e) => setTxnNo(e.target.value)}
-                  className="w-full text-xs font-mono font-bold text-blue-600 border border-slate-300 rounded-lg p-2 bg-white"
-                  required
+                  placeholder="Phone number"
+                  value={partyPhone}
+                  onChange={(e) => setPartyPhone(e.target.value)}
+                  className="w-full text-xs border border-slate-300 rounded-lg p-2.5 bg-white mb-2"
+                />
+                <input
+                  type="text"
+                  placeholder="GSTIN (Optional)"
+                  value={partyGstin}
+                  onChange={(e) => setPartyGstin(e.target.value)}
+                  className="w-full text-xs border border-slate-300 rounded-lg p-2 bg-white uppercase font-mono"
                 />
               </div>
+
+              <div>
+                <div className="mb-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Invoice / Txn Date
+                  </label>
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full text-xs border border-slate-300 rounded-lg p-2 bg-white"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Invoice / Bill No.
+                  </label>
+                  <input
+                    type="text"
+                    value={txnNo}
+                    onChange={(e) => setTxnNo(e.target.value)}
+                    className="w-full text-xs font-mono font-bold text-blue-600 border border-slate-300 rounded-lg p-2 bg-white"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* MyBillBook Style Billing Address Row matching screenshot 1 */}
+            <div className="pt-3 border-t border-slate-200">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center space-x-1.5 text-xs font-bold text-slate-800">
+                  <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Customer Billing Address</span>
+                  <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-semibold">myBillBook Style</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddressDetails(!showAddressDetails)}
+                  className="text-[11px] font-semibold text-blue-600 hover:text-blue-800"
+                >
+                  {showAddressDetails ? 'Hide Address Fields ▲' : '+ Show / Edit Address Fields ▼'}
+                </button>
+              </div>
+
+              {showAddressDetails && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-white p-3.5 rounded-xl border border-slate-200 animate-in fade-in duration-150">
+                  <div className="md:col-span-2">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Billing Address (Street / Area / Landmark)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Near Kashipur Chowk, Samastipur"
+                      value={partyAddress}
+                      onChange={(e) => setPartyAddress(e.target.value)}
+                      className="w-full text-xs border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      City
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. SAMASTIPUR"
+                      value={partyCity}
+                      onChange={(e) => setPartyCity(e.target.value)}
+                      className="w-full text-xs border border-slate-300 rounded-lg p-2 uppercase focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        State
+                      </label>
+                      <select
+                        value={partyState}
+                        onChange={(e) => setPartyState(e.target.value)}
+                        className="w-full text-xs border border-slate-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                      >
+                        <option value="Bihar">Bihar</option>
+                        <option value="Uttar Pradesh">Uttar Pradesh</option>
+                        <option value="Jharkhand">Jharkhand</option>
+                        <option value="West Bengal">West Bengal</option>
+                        <option value="Delhi">Delhi</option>
+                        <option value="Maharashtra">Maharashtra</option>
+                        <option value="Gujarat">Gujarat</option>
+                        <option value="Rajasthan">Rajasthan</option>
+                        <option value="Punjab">Punjab</option>
+                        <option value="Haryana">Haryana</option>
+                        <option value="Madhya Pradesh">Madhya Pradesh</option>
+                        <option value="Odisha">Odisha</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        Pincode
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="848101"
+                        maxLength={6}
+                        value={partyPincode}
+                        onChange={(e) => setPartyPincode(e.target.value)}
+                        className="w-full text-xs font-mono border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
