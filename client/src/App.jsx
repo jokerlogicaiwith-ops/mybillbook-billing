@@ -8,6 +8,7 @@ import PartiesView from './components/PartiesView';
 import ItemsView from './components/ItemsView';
 import SalesView from './components/SalesView';
 import SalesInvoicesView from './components/SalesInvoicesView';
+import PurchasesView from './components/PurchasesView';
 import SettingsView from './components/SettingsView';
 import CustomerBillView from './components/CustomerBillView';
 import { Building2, Sparkles, ScanLine, FileSpreadsheet, ShieldAlert } from 'lucide-react';
@@ -22,9 +23,10 @@ export default function App() {
     return <CustomerBillView identifier={customerBillId} onBackToApp={() => window.location.href = '/'} />;
   }
 
-  const [activeTab, setActiveTab] = useState('items'); // Default to items to immediately show MyBillBook Items!
+  const [activeTab, setActiveTab] = useState('purchases'); // Show Purchases screen directly as requested by user
   const [salesSubTab, setSalesSubTab] = useState('invoices');
   const [itemsSubTab, setItemsSubTab] = useState('inventory');
+  const [purchasesSubTab, setPurchasesSubTab] = useState('invoices');
   const [company, setCompany] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -106,13 +108,15 @@ export default function App() {
         setSalesSubTab={setSalesSubTab}
         itemsSubTab={itemsSubTab}
         setItemsSubTab={setItemsSubTab}
+        purchasesSubTab={purchasesSubTab}
+        setPurchasesSubTab={setPurchasesSubTab}
         onOpenInvoiceModal={handleOpenInvoiceModal}
         company={company}
       />
 
       {/* Main Content Area */}
       <div className="flex-1 ml-64 flex flex-col min-h-screen">
-        {activeTab !== 'sales' && activeTab !== 'items' && (
+        {activeTab !== 'sales' && activeTab !== 'items' && activeTab !== 'purchases' && (
           <Header 
             title={getPageTitle()} 
             onRefresh={fetchDashboard}
@@ -121,7 +125,7 @@ export default function App() {
           />
         )}
 
-        <main className={`flex-1 ${activeTab === 'sales' || activeTab === 'items' ? 'p-0' : 'pb-16'}`}>
+        <main className={`flex-1 ${activeTab === 'sales' || activeTab === 'items' || activeTab === 'purchases' ? 'p-0' : 'pb-16'}`}>
           {activeTab === 'dashboard' && (
             <Dashboard 
               dashboardData={dashboardData}
@@ -157,7 +161,9 @@ export default function App() {
           )}
 
           {activeTab === 'purchases' && (
-            <SalesView 
+            <PurchasesView 
+              subTab={purchasesSubTab}
+              onSelectSubTab={setPurchasesSubTab}
               onOpenInvoiceModal={handleOpenInvoiceModal}
               onViewInvoice={handleViewInvoice}
             />

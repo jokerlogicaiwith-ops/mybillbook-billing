@@ -354,6 +354,36 @@ app.get('/api/sales/stats', (req, res) => {
   }
 });
 
+// Purchases Stats API matching MyBillBook
+app.get('/api/purchases/stats', (req, res) => {
+  try {
+    const requestedType = req.query.type || 'Purchase Invoices';
+    let txns = [];
+    if (requestedType === 'Purchase Invoices') {
+      const allTxns = db.prepare("SELECT * FROM transactions").all();
+      txns = allTxns.filter(t => t.type === 'Purchase Invoices' || t.type === 'Purchase Bills');
+    } else {
+      const allTxns = db.prepare("SELECT * FROM transactions").all();
+      txns = allTxns.filter(t => t.type === requestedType);
+    }
+
+    const totalPurchases = txns.reduce((a, t) => a + (Number(t.amount) || 0), 0);
+    const paid = txns.reduce((a, t) => a + (Number(t.paid_amount) || 0), 0);
+    const unpaid = txns.reduce((a, t) => a + (Number(t.balance_due) || 0), 0);
+
+    res.json({
+      totalPurchases,
+      paid,
+      unpaid,
+      card1: { label: requestedType === 'Purchase Invoices' ? 'Total Purchases' : `Total ${requestedType}`, value: totalPurchases, format: 'currency' },
+      card2: { label: 'Paid', value: paid, format: 'currency', color: 'text-emerald-600' },
+      card3: { label: 'Unpaid', value: unpaid, format: 'currency', color: 'text-red-600' }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/transactions', (req, res) => {
   try {
     const { type, search, limit } = req.query;
@@ -361,8 +391,12 @@ app.get('/api/transactions', (req, res) => {
     const params = [];
 
     if (type && type !== 'all') {
-      query += ' AND type = ?';
-      params.push(type);
+      if (type === 'Purchase Invoices') {
+        query += " AND (type = 'Purchase Invoices' OR type = 'Purchase Bills')";
+      } else {
+        query += ' AND type = ?';
+        params.push(type);
+      }
     }
     if (search) {
       query += ' AND (party_name LIKE ? OR txn_no LIKE ?)';

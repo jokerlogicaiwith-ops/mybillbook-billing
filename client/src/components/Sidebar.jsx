@@ -28,11 +28,14 @@ export default function Sidebar({
   salesSubTab = 'invoices',
   setSalesSubTab,
   itemsSubTab = 'inventory',
-  setItemsSubTab
+  setItemsSubTab,
+  purchasesSubTab = 'invoices',
+  setPurchasesSubTab
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [salesExpanded, setSalesExpanded] = useState(true);
   const [itemsExpanded, setItemsExpanded] = useState(true);
+  const [purchasesExpanded, setPurchasesExpanded] = useState(true);
   const [showMoreAccounting, setShowMoreAccounting] = useState(false);
 
   const itemsSubmenuItems = [
@@ -61,6 +64,21 @@ export default function Sidebar({
     setActiveTab('sales');
     if (setSalesSubTab) {
       setSalesSubTab(subId);
+    }
+  };
+
+  const purchasesSubmenuItems = [
+    { id: 'invoices', label: 'Purchase Invoices' },
+    { id: 'payment-out', label: 'Payment Out' },
+    { id: 'purchase-return', label: 'Purchase Return' },
+    { id: 'debit-note', label: 'Debit Note' },
+    { id: 'purchase-orders', label: 'Purchase Orders' }
+  ];
+
+  const handleSelectPurchasesSubItem = (subId) => {
+    setActiveTab('purchases');
+    if (setPurchasesSubTab) {
+      setPurchasesSubTab(subId);
     }
   };
 
@@ -275,21 +293,52 @@ export default function Sidebar({
               )}
             </div>
 
-            {/* Purchases */}
-            <button
-              onClick={() => setActiveTab('purchases')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                activeTab === 'purchases' 
-                  ? 'bg-[#232f4b] text-white shadow-xs font-semibold' 
-                  : 'hover:bg-slate-800/60 text-slate-300 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <ShoppingBag className={`w-4 h-4 ${activeTab === 'purchases' ? 'text-blue-400' : 'text-slate-400'}`} />
-                <span>Purchases</span>
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
-            </button>
+            {/* Purchases (Accordion with Chevron) matching MyBillBook screenshot */}
+            <div>
+              <button
+                onClick={() => {
+                  setPurchasesExpanded(!purchasesExpanded);
+                  setActiveTab('purchases');
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  activeTab === 'purchases'
+                    ? 'text-white' 
+                    : 'hover:bg-slate-800/60 text-slate-300 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <ShoppingBag className={`w-4 h-4 ${activeTab === 'purchases' ? 'text-indigo-400' : 'text-slate-400'}`} />
+                  <span className="font-semibold">Purchases</span>
+                </div>
+                {purchasesExpanded ? (
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                ) : (
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                )}
+              </button>
+
+              {/* Submenu under Purchases matching MyBillBook screenshot */}
+              {purchasesExpanded && (
+                <div className="space-y-0.5 my-1">
+                  {purchasesSubmenuItems.map((sub) => {
+                    const isSubActive = activeTab === 'purchases' && purchasesSubTab === sub.id;
+                    return (
+                      <button
+                        key={sub.id}
+                        onClick={() => handleSelectPurchasesSubItem(sub.id)}
+                        className={`w-full flex items-center justify-between pl-8 pr-3 py-2 rounded-xl text-xs transition-all ${
+                          isSubActive 
+                            ? 'bg-[#25324e] text-white font-semibold shadow-xs' 
+                            : 'text-slate-300/80 hover:text-white hover:bg-slate-800/50'
+                        }`}
+                      >
+                        <span className="truncate">{sub.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Reports */}
             <button

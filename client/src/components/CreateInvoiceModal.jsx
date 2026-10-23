@@ -66,7 +66,11 @@ export default function CreateInvoiceModal({
     else if (type === 'Credit Note') prefix = 'CN';
     else if (type === 'Delivery Challan') prefix = 'DC';
     else if (type === 'Proforma Invoice') prefix = 'PI';
-    else if (type === 'Purchase Bills') prefix = 'PUR';
+    else if (type === 'Purchase Invoices' || type === 'Purchase Bills') prefix = 'PUR';
+    else if (type === 'Payment Out') prefix = 'PAY-OUT';
+    else if (type === 'Purchase Return') prefix = 'PR';
+    else if (type === 'Debit Note') prefix = 'DN';
+    else if (type === 'Purchase Orders') prefix = 'PO';
 
     const rand = Math.floor(1000 + Math.random() * 9000);
     setTxnNo(`${prefix}-${rand}`);
@@ -367,21 +371,30 @@ export default function CreateInvoiceModal({
               New Transaction
             </span>
             <div className="flex flex-wrap gap-1 bg-slate-800 p-0.5 rounded-lg text-xs font-semibold">
-              {[
-                'Sales Invoices', 
-                'Quotation / Estimate', 
-                'Payment In', 
-                'Sales Return', 
-                'Credit Note', 
-                'Delivery Challan', 
-                'Proforma Invoice'
-              ].map(t => (
+              {(['Purchase Invoices', 'Purchase Bills', 'Payment Out', 'Purchase Return', 'Debit Note', 'Purchase Orders'].includes(txnType)
+                ? [
+                    'Purchase Invoices',
+                    'Payment Out',
+                    'Purchase Return',
+                    'Debit Note',
+                    'Purchase Orders'
+                  ]
+                : [
+                    'Sales Invoices', 
+                    'Quotation / Estimate', 
+                    'Payment In', 
+                    'Sales Return', 
+                    'Credit Note', 
+                    'Delivery Challan', 
+                    'Proforma Invoice'
+                  ]
+              ).map(t => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => { setTxnType(t); generateSuggestedTxnNo(t); }}
                   className={`px-2.5 py-1 rounded-md transition text-[11px] ${
-                    txnType === t ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-slate-300 hover:text-white'
+                    txnType === t || (t === 'Purchase Invoices' && txnType === 'Purchase Bills') ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-slate-300 hover:text-white'
                   }`}
                 >
                   {t}
