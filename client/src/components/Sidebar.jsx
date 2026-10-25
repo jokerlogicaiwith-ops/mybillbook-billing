@@ -194,18 +194,18 @@ export default function Sidebar({
               <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
             </button>
 
-            {/* Staff & Commission */}
+            {/* Staff & Users */}
             <button
               onClick={() => setActiveTab('staff')}
               className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                activeTab === 'staff' 
+                activeTab === 'staff' || activeTab === 'manage-users' || activeTab === 'staff-payroll'
                   ? 'bg-[#232f4b] text-white shadow-xs font-semibold' 
                   : 'hover:bg-slate-800/60 text-slate-300 hover:text-white'
               }`}
             >
               <div className="flex items-center space-x-3">
-                <Users2 className={`w-4 h-4 ${activeTab === 'staff' ? 'text-indigo-400' : 'text-slate-400'}`} />
-                <span>Staff & Commission</span>
+                <Users2 className={`w-4 h-4 ${activeTab === 'staff' || activeTab === 'manage-users' ? 'text-indigo-400' : 'text-slate-400'}`} />
+                <span>Staff & Users (स्टाफ)</span>
               </div>
               <span className="text-[10px] bg-indigo-900/60 text-indigo-300 font-bold px-1.5 py-0.2 rounded border border-indigo-700/50">
                 New

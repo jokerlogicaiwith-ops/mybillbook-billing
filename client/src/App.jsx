@@ -92,7 +92,10 @@ export default function App() {
     switch (activeTab) {
       case 'dashboard': return 'Dashboard';
       case 'parties': return 'Parties (Customers & Vendors)';
-      case 'staff': return 'Staff & Sales Commission (स्टाफ व कमीशन)';
+      case 'staff': 
+      case 'manage-users':
+      case 'staff-payroll':
+        return 'Staff & Users Management (स्टाफ व कमीशन)';
       case 'items': return 'Items & Inventory';
       case 'sales': return 'Sales Transactions';
       case 'purchases': return 'Purchase Bills & Vendors';
@@ -152,7 +155,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'staff' && (
+          {(activeTab === 'staff' || activeTab === 'manage-users' || activeTab === 'staff-payroll') && (
             <StaffView 
               onOpenInvoiceModal={handleOpenInvoiceModal}
               onViewInvoice={handleViewInvoice}
@@ -231,7 +234,7 @@ export default function App() {
           )}
 
           {/* Fallback for other modules */}
-          {['e-invoicing', 'automated-bills', 'expenses', 'pos-billing', 'ai-collections', 'staff-payroll', 'manage-users'].includes(activeTab) && (
+          {['e-invoicing', 'automated-bills', 'expenses', 'pos-billing', 'ai-collections'].includes(activeTab) && (
             <div className="p-12 max-w-xl mx-auto text-center space-y-4">
               <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl mx-auto flex items-center justify-center">
                 <Sparkles className="w-8 h-8" />
