@@ -62,7 +62,7 @@
       "address": "Market Complex, Patna",
       "state": "Bihar",
       "opening_balance": 0,
-      "current_balance": 1818800
+      "current_balance": 1818830
     },
     {
       "id": 2,
@@ -322,7 +322,7 @@
       "purchase_price": 0,
       "wholesale_price": 0,
       "tax_rate": 18,
-      "stock_qty": -1,
+      "stock_qty": -2,
       "low_stock_limit": 5
     },
     {
@@ -368,6 +368,34 @@
     }
   ],
   "transactions": [
+    {
+      "id": 33,
+      "txn_no": "A/SL-6589",
+      "type": "Sales Invoices",
+      "date": "2026-10-23",
+      "party_id": 1,
+      "party_name": "AVYAAN",
+      "subtotal": 25,
+      "tax_amount": 4.5,
+      "discount": 0,
+      "amount": 30,
+      "paid_amount": 0,
+      "balance_due": 30,
+      "payment_type": "Credit",
+      "status": "Unpaid",
+      "notes": "",
+      "party_phone": "9123456780",
+      "party_gstin": "10BBBPB8899M1ZQ",
+      "party_address": "Market Complex, Patna",
+      "party_city": "SAMASTIPUR",
+      "party_state": "Bihar",
+      "party_pincode": "848101",
+      "staff_id": null,
+      "staff_code": "",
+      "staff_name": "",
+      "staff_commission_rate": 0,
+      "staff_commission_amount": 0
+    },
     {
       "id": 32,
       "txn_no": "A/SL-TEST-STF",
@@ -1063,6 +1091,20 @@
       "tax_rate": 18,
       "tax_amount": 180,
       "total": 1180
+    },
+    {
+      "id": 4,
+      "transaction_id": 33,
+      "item_id": 13,
+      "item_name": "BNC & DC CONNECTOR",
+      "hsn_code": "8536",
+      "quantity": 1,
+      "unit": "PCS",
+      "rate": 25,
+      "discount": 0,
+      "tax_rate": 18,
+      "tax_amount": 4.5,
+      "total": 29.5
     }
   ],
   "bank_accounts": [

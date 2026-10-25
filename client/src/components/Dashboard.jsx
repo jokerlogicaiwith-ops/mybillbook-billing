@@ -122,7 +122,7 @@ export default function Dashboard({
           </div>
           <div className="mt-4 flex items-center justify-between">
             <button 
-              onClick={() => setActiveTab('manage-users')}
+              onClick={() => setActiveTab('staff')}
               className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center space-x-1"
             >
               <span>Manage Users Now &rarr;</span>

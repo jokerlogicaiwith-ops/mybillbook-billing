@@ -130,6 +130,7 @@ export default function App() {
             onRefresh={fetchDashboard}
             isRefreshing={loading}
             onOpenInvoiceModal={handleOpenInvoiceModal}
+            onSelectTab={setActiveTab}
           />
         )}
 

@@ -10,7 +10,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
-export default function Header({ title, onRefresh, isRefreshing, onOpenInvoiceModal }) {
+export default function Header({ title, onRefresh, isRefreshing, onOpenInvoiceModal, onSelectTab }) {
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-20">
       <div className="flex items-center space-x-3">
@@ -45,8 +45,9 @@ export default function Header({ title, onRefresh, isRefreshing, onOpenInvoiceMo
         </button>
 
         <button 
-          title="Community" 
-          className="p-2 text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition"
+          title="Manage Staff & Users" 
+          onClick={() => onSelectTab && onSelectTab('staff')}
+          className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
         >
           <Users className="w-5 h-5" />
         </button>
