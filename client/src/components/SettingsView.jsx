@@ -18,45 +18,45 @@ import {
 
 export default function SettingsView({ company, onSaveCompany }) {
   const [formData, setFormData] = useState({
-    name: 'VSRM COMPUTER CLASSES',
-    phone: '8936863035',
-    email: '',
-    billing_address: 'Near Kashipur Chowk Samastipur 848101',
-    address: 'Near Kashipur Chowk Samastipur 848101',
+    name: 'APOORV',
+    phone: '8130140936',
+    email: 'apoorv@enterprise.com',
+    billing_address: 'Station Road, Samastipur, Bihar - 848101',
+    address: 'Station Road, Samastipur, Bihar - 848101',
     state: 'Bihar',
     pincode: '848101',
     city: 'SAMASTIPUR',
     is_gst_registered: true,
-    gstin: '10ABFCA4659J1ZQ',
+    gstin: '10AABCA1234F1Z5',
     business_type: 'Retailer, Wholesaler, Distributor, Manufacturer, Services',
-    industry_type: 'Education-Schooling/Coaching',
+    industry_type: 'Quality Feeds & Engineering Solutions',
     registration_type: '',
     enable_einvoicing: false,
-    website: 'www.vsrm.in',
-    upi_id: '8936863035@upi',
-    tagline: 'Education & Computer Training Institute',
-    terms: '1. Fees / Goods once sold will not be refunded.\n2. Invoices are subject to Samastipur jurisdiction.\n3. Thank you for your business!'
+    website: 'vsrm.shop',
+    upi_id: '8130140936@upi',
+    tagline: 'Quality Feeds & Engineering Solutions',
+    terms: '1. Goods once sold will not be taken back.\n2. Interest @ 18% p.a. will be charged if payment is not received within due date.\n3. Subject to Samastipur jurisdiction.'
   });
 
   const [saved, setSaved] = useState(false);
   const [activeDetailKey, setActiveDetailKey] = useState('Website');
-  const [activeDetailVal, setActiveDetailVal] = useState('www.vsrm.in');
+  const [activeDetailVal, setActiveDetailVal] = useState('vsrm.shop');
 
   useEffect(() => {
     if (company) {
       setFormData({
-        name: company.name || 'VSRM COMPUTER CLASSES',
-        phone: company.phone || '8936863035',
-        email: company.email || '',
-        billing_address: company.billing_address || company.address || 'Near Kashipur Chowk Samastipur 848101',
-        address: company.address || company.billing_address || 'Near Kashipur Chowk Samastipur 848101',
+        name: company.name || 'APOORV',
+        phone: company.phone || '8130140936',
+        email: company.email || 'apoorv@enterprise.com',
+        billing_address: company.billing_address || company.address || 'Station Road, Samastipur, Bihar - 848101',
+        address: company.address || company.billing_address || 'Station Road, Samastipur, Bihar - 848101',
         state: company.state || 'Bihar',
         pincode: company.pincode || '848101',
         city: company.city || 'SAMASTIPUR',
         is_gst_registered: company.is_gst_registered !== undefined ? Boolean(company.is_gst_registered) : true,
-        gstin: company.gstin || '10ABFCA4659J1ZQ',
+        gstin: company.gstin || '10AABCA1234F1Z5',
         business_type: company.business_type || 'Retailer, Wholesaler, Distributor, Manufacturer, Services',
-        industry_type: company.industry_type || 'Education-Schooling/Coaching',
+        industry_type: company.industry_type || 'Quality Feeds & Engineering Solutions',
         registration_type: company.registration_type || '',
         enable_einvoicing: Boolean(company.enable_einvoicing),
         website: company.website || 'www.vsrm.in',

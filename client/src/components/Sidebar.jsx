@@ -89,14 +89,14 @@ export default function Sidebar({
       <div className="p-4 border-b border-slate-800/60 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 rounded-full bg-[#1d4ed8] text-white font-bold flex items-center justify-center text-lg shadow-sm">
-            {company?.name ? company.name.charAt(0) : 'V'}
+            {company?.name ? company.name.charAt(0) : 'A'}
           </div>
           <div className="overflow-hidden">
             <h2 className="font-semibold text-white text-sm tracking-wide truncate">
-              {company?.name || 'VSRM COMPUTER CLASSES'}
+              {company?.name || 'APOORV'}
             </h2>
             <p className="text-xs text-slate-400 font-mono">
-              {company?.phone || '8936863035'}
+              {company?.phone || '8130140936'}
             </p>
           </div>
         </div>

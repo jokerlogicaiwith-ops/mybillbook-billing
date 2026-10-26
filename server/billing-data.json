@@ -2,22 +2,22 @@
   "company_settings": [
     {
       "id": 1,
-      "name": "VSRM COMPUTER CLASSES",
-      "phone": "8936863035",
-      "email": "contact@vsrm.in",
-      "gstin": "10ABFCA4659J1ZQ",
+      "name": "APOORV",
+      "phone": "8130140936",
+      "email": "apoorv@enterprise.com",
+      "gstin": "10AABCA1234F1Z5",
       "is_gst_registered": true,
-      "address": "Near Kashipur Chowk Samastipur 848101",
-      "billing_address": "Near Kashipur Chowk Samastipur 848101",
+      "address": "Station Road, Samastipur, Bihar - 848101",
+      "billing_address": "Station Road, Samastipur, Bihar - 848101",
       "city": "SAMASTIPUR",
       "state": "Bihar",
       "pincode": "848101",
       "business_type": "Retailer, Wholesaler, Distributor, Manufacturer, Services",
-      "industry_type": "Education-Schooling/Coaching",
+      "industry_type": "Quality Feeds & Engineering Solutions",
       "registration_type": "Proprietorship",
-      "upi_id": "8936863035@upi",
-      "tagline": "Education & Computer Training Institute",
-      "terms": "1. Fees / Goods once sold will not be refunded.\n2. Invoices are subject to Samastipur jurisdiction.\n3. Thank you for your business!"
+      "upi_id": "8130140936@upi",
+      "tagline": "Quality Feeds & Engineering Solutions",
+      "terms": "1. Goods once sold will not be taken back.\n2. Interest @ 18% p.a. will be charged if payment is not received within due date.\n3. Subject to Samastipur jurisdiction."
     }
   ],
   "staff": [
@@ -50,6 +50,16 @@
       "commission_rate": 4,
       "status": "Active",
       "created_at": "2026-10-22"
+    },
+    {
+      "id": 4,
+      "staff_code": "STF-104",
+      "name": "ABHIESH KUMAR",
+      "phone": "08936863035",
+      "role": "Sales Executive",
+      "commission_rate": 5,
+      "status": "Active",
+      "created_at": "2026-10-25"
     }
   ],
   "parties": [
@@ -62,7 +72,7 @@
       "address": "Market Complex, Patna",
       "state": "Bihar",
       "opening_balance": 0,
-      "current_balance": 1818830
+      "current_balance": 1818890
     },
     {
       "id": 2,
@@ -322,7 +332,7 @@
       "purchase_price": 0,
       "wholesale_price": 0,
       "tax_rate": 18,
-      "stock_qty": -2,
+      "stock_qty": -4,
       "low_stock_limit": 5
     },
     {
@@ -368,6 +378,62 @@
     }
   ],
   "transactions": [
+    {
+      "id": 35,
+      "txn_no": "A/SL-9758",
+      "type": "Sales Invoices",
+      "date": "2026-10-25",
+      "party_id": 1,
+      "party_name": "AVYAAN",
+      "subtotal": 25,
+      "tax_amount": 4.5,
+      "discount": 0,
+      "amount": 30,
+      "paid_amount": 0,
+      "balance_due": 30,
+      "payment_type": "Credit",
+      "status": "Unpaid",
+      "notes": "",
+      "party_phone": "9123456780",
+      "party_gstin": "10BBBPB8899M1ZQ",
+      "party_address": "Market Complex, Patna",
+      "party_city": "SAMASTIPUR",
+      "party_state": "Bihar",
+      "party_pincode": "848101",
+      "staff_id": null,
+      "staff_code": "",
+      "staff_name": "",
+      "staff_commission_rate": 0,
+      "staff_commission_amount": 0
+    },
+    {
+      "id": 34,
+      "txn_no": "A/SL-8484",
+      "type": "Sales Invoices",
+      "date": "2026-10-25",
+      "party_id": 1,
+      "party_name": "AVYAAN",
+      "subtotal": 25,
+      "tax_amount": 4.5,
+      "discount": 0,
+      "amount": 30,
+      "paid_amount": 0,
+      "balance_due": 30,
+      "payment_type": "Credit",
+      "status": "Unpaid",
+      "notes": "",
+      "party_phone": "9123456780",
+      "party_gstin": "10BBBPB8899M1ZQ",
+      "party_address": "Market Complex, Patna",
+      "party_city": "SAMASTIPUR",
+      "party_state": "Bihar",
+      "party_pincode": "848101",
+      "staff_id": null,
+      "staff_code": "",
+      "staff_name": "",
+      "staff_commission_rate": 0,
+      "staff_commission_amount": 0
+    },
     {
       "id": 33,
       "txn_no": "A/SL-6589",
@@ -1095,6 +1161,34 @@
     {
       "id": 4,
       "transaction_id": 33,
+      "item_id": 13,
+      "item_name": "BNC & DC CONNECTOR",
+      "hsn_code": "8536",
+      "quantity": 1,
+      "unit": "PCS",
+      "rate": 25,
+      "discount": 0,
+      "tax_rate": 18,
+      "tax_amount": 4.5,
+      "total": 29.5
+    },
+    {
+      "id": 5,
+      "transaction_id": 34,
+      "item_id": 13,
+      "item_name": "BNC & DC CONNECTOR",
+      "hsn_code": "8536",
+      "quantity": 1,
+      "unit": "PCS",
+      "rate": 25,
+      "discount": 0,
+      "tax_rate": 18,
+      "tax_amount": 4.5,
+      "total": 29.5
+    },
+    {
+      "id": 6,
+      "transaction_id": 35,
       "item_id": 13,
       "item_name": "BNC & DC CONNECTOR",
       "hsn_code": "8536",
