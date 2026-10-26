@@ -109,10 +109,15 @@ function initSqliteDb(sqliteDb) {
       phone TEXT,
       role TEXT DEFAULT 'Sales Executive',
       commission_rate REAL DEFAULT 2.0,
+      password TEXT DEFAULT '1234',
       status TEXT DEFAULT 'Active',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  try {
+    sqliteDb.exec("ALTER TABLE staff ADD COLUMN password TEXT DEFAULT '1234'");
+  } catch (e) {}
 
   const companyCheck = sqliteDb.prepare('SELECT COUNT(*) as count FROM company_settings').get();
   if (companyCheck.count === 0) {
@@ -188,11 +193,21 @@ function createJsonDb() {
         store = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
         if (!store.staff || !Array.isArray(store.staff) || store.staff.length === 0) {
           store.staff = [
-            { id: 1, staff_code: 'STF-101', name: 'Rahul Sharma', phone: '9876501234', role: 'Sales Executive', commission_rate: 5.0, status: 'Active', created_at: '2026-10-20' },
-            { id: 2, staff_code: 'STF-102', name: 'Amit Kumar', phone: '9835123456', role: 'Sales Associate', commission_rate: 3.0, status: 'Active', created_at: '2026-10-21' },
-            { id: 3, staff_code: 'STF-103', name: 'Pooja Singh', phone: '9430987654', role: 'Billing Counter', commission_rate: 4.0, status: 'Active', created_at: '2026-10-22' }
+            { id: 1, staff_code: 'STF-101', name: 'Rahul Sharma', phone: '9876501234', role: 'Senior Sales Executive', commission_rate: 5.0, password: '1234', status: 'Active', created_at: '2026-10-20' },
+            { id: 2, staff_code: 'STF-102', name: 'Amit Kumar', phone: '9835123456', role: 'Sales Associate', commission_rate: 3.0, password: '1234', status: 'Active', created_at: '2026-10-21' },
+            { id: 3, staff_code: 'STF-103', name: 'Pooja Singh', phone: '9430987654', role: 'Accountant / C.A.', commission_rate: 4.0, password: '1234', status: 'Active', created_at: '2026-10-22' },
+            { id: 4, staff_code: 'STF-104', name: 'ABHIESH KUMAR', phone: '08936863035', role: 'Billing Executive', commission_rate: 5.0, password: '1234', status: 'Active', created_at: '2026-10-25' }
           ];
           saveStore();
+        } else {
+          let updated = false;
+          store.staff.forEach(s => {
+            if (!s.password) {
+              s.password = '1234';
+              updated = true;
+            }
+          });
+          if (updated) saveStore();
         }
         return store;
       } catch (e) {}
@@ -423,7 +438,13 @@ function createJsonDb() {
             return { lastInsertRowid: newId };
           }
           if (cleanSql.includes('INSERT INTO staff')) {
-            const [staff_code, name, phone, role, commission_rate, status] = params;
+            let staff_code, name, phone, role, commission_rate, password, status;
+            if (cleanSql.includes('password')) {
+              [staff_code, name, phone, role, commission_rate, password, status] = params;
+            } else {
+              [staff_code, name, phone, role, commission_rate, status] = params;
+              password = '1234';
+            }
             const newId = (store.staff || []).length ? Math.max(...store.staff.map(s => s.id)) + 1 : 1;
             const newStaff = {
               id: newId,
@@ -432,6 +453,7 @@ function createJsonDb() {
               phone: phone || '',
               role: role || 'Sales Executive',
               commission_rate: parseFloat(commission_rate) || 0,
+              password: String(password || '1234'),
               status: status || 'Active',
               created_at: new Date().toISOString().split('T')[0]
             };
@@ -440,14 +462,32 @@ function createJsonDb() {
             saveStore();
             return { lastInsertRowid: newId };
           }
+          if (cleanSql.includes('UPDATE staff SET password = ? WHERE id = ?')) {
+            const [newPass, id] = params;
+            const staffMember = (store.staff || []).find(s => s.id === Number(id));
+            if (staffMember) {
+              staffMember.password = String(newPass || '1234');
+              saveStore();
+              return { changes: 1 };
+            }
+            return { changes: 0 };
+          }
           if (cleanSql.includes('UPDATE staff SET')) {
-            const [name, phone, role, commission_rate, status, id] = params;
+            let name, phone, role, commission_rate, password, status, id;
+            if (cleanSql.includes('password = ?')) {
+              [name, phone, role, commission_rate, password, status, id] = params;
+            } else {
+              [name, phone, role, commission_rate, status, id] = params;
+            }
             const staffMember = (store.staff || []).find(s => s.id === Number(id));
             if (staffMember) {
               staffMember.name = name;
               staffMember.phone = phone || '';
               staffMember.role = role || 'Sales Executive';
               staffMember.commission_rate = parseFloat(commission_rate) || 0;
+              if (password !== undefined && String(password).trim() !== '') {
+                staffMember.password = String(password);
+              }
               staffMember.status = status || 'Active';
               saveStore();
               return { changes: 1 };

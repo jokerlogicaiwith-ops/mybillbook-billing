@@ -10,7 +10,15 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
-export default function Header({ title, onRefresh, isRefreshing, onOpenInvoiceModal, onSelectTab }) {
+export default function Header({ 
+  title, 
+  onRefresh, 
+  isRefreshing, 
+  onOpenInvoiceModal, 
+  onSelectTab,
+  currentUser,
+  onOpenLoginModal
+}) {
   return (
     <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-20">
       <div className="flex items-center space-x-3">
@@ -75,6 +83,30 @@ export default function Header({ title, onRefresh, isRefreshing, onOpenInvoiceMo
             <RefreshCw className="w-5 h-5" />
           </button>
         )}
+
+        {/* User Account / Staff Login Badge */}
+        <button
+          onClick={onOpenLoginModal}
+          title="Switch Staff / Accountant Login (स्टाफ लॉगिन / बदलें)"
+          className="ml-2 flex items-center space-x-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-indigo-50/60 hover:border-indigo-300 transition text-left shadow-2xs"
+        >
+          <div className={`w-7 h-7 rounded-lg font-bold flex items-center justify-center text-xs text-white shrink-0 ${
+            currentUser?.is_admin 
+              ? 'bg-amber-600' 
+              : ((currentUser?.role || '').toLowerCase().includes('account') ? 'bg-purple-600' : 'bg-indigo-600')
+          }`}>
+            {currentUser?.is_admin ? '👑' : (currentUser?.name?.charAt(0).toUpperCase() || 'U')}
+          </div>
+          <div className="hidden sm:block">
+            <div className="text-xs font-bold text-slate-900 leading-tight flex items-center space-x-1">
+              <span className="truncate max-w-[110px]">{currentUser?.name || 'Admin'}</span>
+              <span className="text-[10px] text-indigo-600 font-semibold">(लॉगिन)</span>
+            </div>
+            <div className="text-[10px] text-slate-500 leading-tight">
+              {currentUser?.is_admin ? 'Owner / Admin' : `${currentUser?.role || 'Staff'} • ${currentUser?.commission_rate || 0}%`}
+            </div>
+          </div>
+        </button>
       </div>
     </header>
   );

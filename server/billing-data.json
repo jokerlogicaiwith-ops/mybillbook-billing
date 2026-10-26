@@ -28,6 +28,7 @@
       "phone": "9876501234",
       "role": "Senior Sales Executive",
       "commission_rate": 5,
+      "password": "1234",
       "status": "Active",
       "created_at": "2026-10-20"
     },
@@ -38,6 +39,7 @@
       "phone": "9835123456",
       "role": "Sales Associate",
       "commission_rate": 3,
+      "password": "1234",
       "status": "Active",
       "created_at": "2026-10-21"
     },
@@ -46,8 +48,9 @@
       "staff_code": "STF-103",
       "name": "Pooja Singh",
       "phone": "9430987654",
-      "role": "Billing & Counter Executive",
+      "role": "Accountant / C.A.",
       "commission_rate": 4,
+      "password": "1234",
       "status": "Active",
       "created_at": "2026-10-22"
     },
@@ -56,8 +59,9 @@
       "staff_code": "STF-104",
       "name": "ABHIESH KUMAR",
       "phone": "08936863035",
-      "role": "Sales Executive",
+      "role": "Billing Executive",
       "commission_rate": 5,
+      "password": "1234",
       "status": "Active",
       "created_at": "2026-10-25"
     }

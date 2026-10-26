@@ -288,6 +288,7 @@ app.get('/api/staff', (req, res) => {
 
       return {
         ...s,
+        password: s.password || '1234',
         total_sales_count: staffTxns.length,
         total_sales_amount: totalSales,
         total_commission: totalCommission,
@@ -301,9 +302,142 @@ app.get('/api/staff', (req, res) => {
   }
 });
 
+// Staff / Accountant Portal API (Returns personal profile, commission summary, and all assigned bills)
+app.get('/api/staff/:id/portal', (req, res) => {
+  try {
+    const staffId = Number(req.params.id);
+    const staff = db.prepare('SELECT * FROM staff WHERE id = ?').get(staffId);
+    if (!staff) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+
+    const allTxns = db.prepare('SELECT * FROM transactions').all();
+    const staffTxns = allTxns.filter(t => 
+      (t.staff_id === staff.id) || 
+      (t.staff_code && t.staff_code === staff.staff_code) ||
+      (t.staff_name && t.staff_name.toLowerCase() === staff.name.toLowerCase())
+    );
+
+    const totalSales = staffTxns.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+    const totalCommission = staffTxns.reduce((sum, t) => {
+      if (t.staff_commission_amount) return sum + parseFloat(t.staff_commission_amount);
+      const rate = parseFloat(staff.commission_rate) || 0;
+      return sum + ((parseFloat(t.amount) || 0) * rate) / 100;
+    }, 0);
+
+    res.json({
+      success: true,
+      staff: {
+        ...staff,
+        password: staff.password || '1234'
+      },
+      stats: {
+        total_sales_count: staffTxns.length,
+        total_sales_amount: totalSales,
+        total_commission: totalCommission,
+        commission_rate: parseFloat(staff.commission_rate) || 0
+      },
+      transactions: staffTxns
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Staff / Accountant / Admin Login API
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const { identifier, password } = req.body;
+    if (!identifier || !String(identifier).trim()) {
+      return res.status(400).json({ error: 'Staff ID, Mobile, or Username required' });
+    }
+
+    const cleanId = String(identifier).trim().toLowerCase();
+    const inputPass = password ? String(password).trim() : '';
+
+    // 1. Check Admin / Owner
+    if (cleanId === 'admin' || cleanId === 'owner' || cleanId === 'apoorv') {
+      if (!inputPass || inputPass === 'admin123' || inputPass === '1234' || inputPass === 'admin') {
+        return res.json({
+          success: true,
+          user: {
+            id: 0,
+            name: 'Admin (Owner)',
+            staff_code: 'ADMIN',
+            phone: '8130140936',
+            role: 'Admin / Owner',
+            commission_rate: 0,
+            is_admin: true
+          }
+        });
+      } else {
+        return res.status(401).json({ error: 'Invalid admin password (default: admin123)' });
+      }
+    }
+
+    // 2. Search in Staff
+    const staffList = db.prepare('SELECT * FROM staff').all();
+    const staff = staffList.find(s => 
+      (s.staff_code && s.staff_code.toLowerCase() === cleanId) ||
+      (s.phone && s.phone.replace(/\D/g, '') === cleanId.replace(/\D/g, '')) ||
+      (s.name && s.name.toLowerCase() === cleanId)
+    );
+
+    if (!staff) {
+      return res.status(404).json({ error: `Staff member not found with ID/Mobile: "${identifier}"` });
+    }
+
+    // Check staff password (default: 1234)
+    const expectedPass = String(staff.password || '1234').trim();
+    if (inputPass && inputPass !== expectedPass) {
+      return res.status(401).json({ error: 'Incorrect password! (Default PIN: 1234)' });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: staff.id,
+        name: staff.name,
+        staff_code: staff.staff_code,
+        phone: staff.phone,
+        role: staff.role || 'Sales Executive',
+        commission_rate: parseFloat(staff.commission_rate) || 0,
+        is_admin: false
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Staff Change Password API
+app.post('/api/auth/change-password', (req, res) => {
+  try {
+    const { staff_id, old_password, new_password } = req.body;
+    if (!staff_id || !new_password || !String(new_password).trim()) {
+      return res.status(400).json({ error: 'New password is required' });
+    }
+
+    const staff = db.prepare('SELECT * FROM staff WHERE id = ?').get(staff_id);
+    if (!staff) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+
+    const currentPass = String(staff.password || '1234').trim();
+    if (old_password && String(old_password).trim() !== currentPass) {
+      return res.status(401).json({ error: 'Current password does not match' });
+    }
+
+    db.prepare('UPDATE staff SET password = ? WHERE id = ?').run(String(new_password).trim(), staff_id);
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/staff', (req, res) => {
   try {
-    const { name, staff_code, phone, role, commission_rate, status } = req.body;
+    const { name, staff_code, phone, role, commission_rate, password, status } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Staff name is required' });
     }
@@ -315,14 +449,15 @@ app.post('/api/staff', (req, res) => {
     }
 
     const info = db.prepare(`
-      INSERT INTO staff (staff_code, name, phone, role, commission_rate, status)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO staff (staff_code, name, phone, role, commission_rate, password, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
       code.trim().toUpperCase(),
       name.trim(),
       phone || '',
       role || 'Sales Executive',
       parseFloat(commission_rate) || 0,
+      password ? String(password).trim() : '1234',
       status || 'Active'
     );
 
@@ -335,14 +470,15 @@ app.post('/api/staff', (req, res) => {
 app.put('/api/staff/:id', (req, res) => {
   try {
     const { id } = req.params;
-    const { name, phone, role, commission_rate, status } = req.body;
+    const { name, phone, role, commission_rate, password, status } = req.body;
     db.prepare(`
-      UPDATE staff SET name = ?, phone = ?, role = ?, commission_rate = ?, status = ? WHERE id = ?
+      UPDATE staff SET name = ?, phone = ?, role = ?, commission_rate = ?, password = ?, status = ? WHERE id = ?
     `).run(
       name,
       phone || '',
       role || 'Sales Executive',
       parseFloat(commission_rate) || 0,
+      password ? String(password).trim() : '1234',
       status || 'Active',
       id
     );

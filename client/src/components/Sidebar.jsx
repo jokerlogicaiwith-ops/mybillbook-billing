@@ -31,7 +31,9 @@ export default function Sidebar({
   itemsSubTab = 'inventory',
   setItemsSubTab,
   purchasesSubTab = 'invoices',
-  setPurchasesSubTab
+  setPurchasesSubTab,
+  currentUser,
+  onOpenLoginModal
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [salesExpanded, setSalesExpanded] = useState(true);
@@ -211,6 +213,26 @@ export default function Sidebar({
                 New
               </span>
             </button>
+
+            {/* My Staff / Accountant Personal Portal */}
+            {currentUser && !currentUser.is_admin && (
+              <button
+                onClick={() => setActiveTab('staff-portal')}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  activeTab === 'staff-portal' 
+                    ? 'bg-indigo-900/50 text-white shadow-xs font-semibold border border-indigo-700/60' 
+                    : 'hover:bg-slate-800/60 text-indigo-300 hover:text-white'
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <Award className={`w-4 h-4 ${activeTab === 'staff-portal' ? 'text-amber-400' : 'text-amber-500'}`} />
+                  <span className="font-bold">My Portal (मेरा कमीशन)</span>
+                </div>
+                <span className="text-[10px] bg-emerald-900/60 text-emerald-300 font-bold px-1.5 py-0.2 rounded border border-emerald-700/50">
+                  {currentUser.commission_rate}%
+                </span>
+              </button>
+            )}
 
             {/* Items (Accordion with Chevron) */}
             <div>
@@ -436,8 +458,34 @@ export default function Sidebar({
         </div>
       </div>
 
-      {/* 4. Bottom Pinned Items: Settings & Security Badges matching screenshot */}
+      {/* 4. Bottom Pinned Items: User Session, Settings & Security Badges */}
       <div className="p-3 border-t border-slate-800/80 bg-[#0d131f] space-y-2">
+        {/* User Session Switcher Box */}
+        <div className="p-2 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-between">
+          <div className="flex items-center space-x-2 overflow-hidden min-w-0">
+            <div className={`w-7 h-7 rounded-lg font-bold flex items-center justify-center text-xs text-white shrink-0 ${
+              currentUser?.is_admin 
+                ? 'bg-amber-600' 
+                : ((currentUser?.role || '').toLowerCase().includes('account') ? 'bg-purple-600' : 'bg-indigo-600')
+            }`}>
+              {currentUser?.is_admin ? '👑' : (currentUser?.name?.charAt(0).toUpperCase() || 'U')}
+            </div>
+            <div className="overflow-hidden min-w-0">
+              <div className="text-xs font-bold text-white truncate">{currentUser?.name || 'Admin'}</div>
+              <div className="text-[10px] text-slate-400 truncate">
+                {currentUser?.is_admin ? 'Owner / Admin' : `${currentUser?.role || 'Staff'} • ${currentUser?.staff_code}`}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onOpenLoginModal}
+            title="Switch Staff / Login (लॉगिन बदलें)"
+            className="p-1 rounded-md bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white transition text-[10px] font-bold px-1.5 shrink-0"
+          >
+            स्विच
+          </button>
+        </div>
+
         <button
           onClick={() => setActiveTab('settings')}
           className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-xs font-medium transition-all ${

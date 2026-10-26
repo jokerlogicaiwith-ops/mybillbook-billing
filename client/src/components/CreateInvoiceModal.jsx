@@ -5,7 +5,8 @@ export default function CreateInvoiceModal({
   isOpen, 
   onClose, 
   initialType = 'Sales Invoices', 
-  onSuccess 
+  onSuccess,
+  currentUser
 }) {
   const [txnType, setTxnType] = useState(initialType);
   const [parties, setParties] = useState([]);
@@ -111,7 +112,9 @@ export default function CreateInvoiceModal({
       const res = await fetch('/api/staff');
       const data = await res.json();
       setStaffList(data);
-      if (Array.isArray(data) && data.length > 0) {
+      if (currentUser && !currentUser.is_admin && currentUser.id) {
+        setSelectedStaffId(String(currentUser.id));
+      } else if (Array.isArray(data) && data.length > 0) {
         setSelectedStaffId(prev => prev || String(data[0].id));
       }
     } catch (err) {
@@ -529,30 +532,47 @@ export default function CreateInvoiceModal({
                   />
                 </div>
 
-                <div className="mt-2.5 p-2 bg-blue-50/70 border border-blue-200 rounded-lg">
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-bold text-blue-900 flex items-center space-x-1">
-                      <span>👤 Sales Staff / Billed By:</span>
-                    </label>
-                    {selectedStaffId && (
-                      <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
-                        {staffList.find(s => s.id === parseInt(selectedStaffId))?.commission_rate || 0}% Comm.
+                {currentUser && !currentUser.is_admin && currentUser.id ? (
+                  <div className="mt-2.5 p-2.5 bg-indigo-50 border border-indigo-200 rounded-lg">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-indigo-900 flex items-center space-x-1.5">
+                        <span>👤 Billed By (Logged In Staff):</span>
+                      </label>
+                      <span className="text-[10px] font-bold bg-indigo-200 text-indigo-900 px-2 py-0.5 rounded-full">
+                        {currentUser.role}
                       </span>
-                    )}
+                    </div>
+                    <div className="flex items-center justify-between text-xs font-bold text-indigo-950 bg-white p-2 rounded border border-indigo-200 shadow-2xs">
+                      <span>{currentUser.name} ({currentUser.staff_code})</span>
+                      <span className="text-emerald-700 font-extrabold">{currentUser.commission_rate}% Comm.</span>
+                    </div>
                   </div>
-                  <select
-                    value={selectedStaffId}
-                    onChange={(e) => setSelectedStaffId(e.target.value)}
-                    className="w-full text-xs font-bold border border-blue-300 rounded-md p-2 bg-white text-slate-900 focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">-- No Staff (Store Admin ADM-001) --</option>
-                    {staffList.map(s => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} ({s.staff_code}) • {s.commission_rate}% Comm.
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                ) : (
+                  <div className="mt-2.5 p-2 bg-blue-50/70 border border-blue-200 rounded-lg">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-blue-900 flex items-center space-x-1">
+                        <span>👤 Sales Staff / Accountant:</span>
+                      </label>
+                      {selectedStaffId && (
+                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
+                          {staffList.find(s => s.id === parseInt(selectedStaffId))?.commission_rate || 0}% Comm.
+                        </span>
+                      )}
+                    </div>
+                    <select
+                      value={selectedStaffId}
+                      onChange={(e) => setSelectedStaffId(e.target.value)}
+                      className="w-full text-xs font-bold border border-blue-300 rounded-md p-2 bg-white text-slate-900 focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">-- No Staff (Store Admin ADM-001) --</option>
+                      {staffList.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.staff_code} • {s.role}) — {s.commission_rate}% Comm.
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             </div>
 

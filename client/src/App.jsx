@@ -12,6 +12,8 @@ import PurchasesView from './components/PurchasesView';
 import SettingsView from './components/SettingsView';
 import CustomerBillView from './components/CustomerBillView';
 import StaffView from './components/StaffView';
+import StaffPortalView from './components/StaffPortalView';
+import StaffLoginModal from './components/StaffLoginModal';
 import { Building2, Sparkles, ScanLine, FileSpreadsheet, ShieldAlert } from 'lucide-react';
 
 export default function App() {
@@ -32,6 +34,17 @@ export default function App() {
   const [company, setCompany] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // User / Staff Authentication State
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('mybillbook_current_user');
+      return saved ? JSON.parse(saved) : { id: 0, name: 'Admin (Owner)', role: 'Admin', staff_code: 'ADMIN', is_admin: true };
+    } catch (e) {
+      return { id: 0, name: 'Admin (Owner)', role: 'Admin', staff_code: 'ADMIN', is_admin: true };
+    }
+  });
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   // Modals
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
@@ -88,6 +101,29 @@ export default function App() {
     setIsPrintModalOpen(true);
   };
 
+  const handleLoginSuccess = (user) => {
+    setCurrentUser(user);
+    try {
+      localStorage.setItem('mybillbook_current_user', JSON.stringify(user));
+    } catch (e) {}
+    if (!user.is_admin) {
+      setActiveTab('staff-portal');
+    }
+  };
+
+  const handleSwitchUser = (staff) => {
+    const user = {
+      id: staff.id,
+      name: staff.name,
+      staff_code: staff.staff_code,
+      phone: staff.phone,
+      role: staff.role || 'Sales Executive',
+      commission_rate: parseFloat(staff.commission_rate) || 0,
+      is_admin: false
+    };
+    handleLoginSuccess(user);
+  };
+
   const getPageTitle = () => {
     switch (activeTab) {
       case 'dashboard': return 'Dashboard';
@@ -96,6 +132,8 @@ export default function App() {
       case 'manage-users':
       case 'staff-payroll':
         return 'Staff & Users Management (स्टाफ व कमीशन)';
+      case 'staff-portal':
+        return 'Staff Portal & Commission (मेरा खाता व कमीशन)';
       case 'items': return 'Items & Inventory';
       case 'sales': return 'Sales Transactions';
       case 'purchases': return 'Purchase Bills & Vendors';
@@ -123,6 +161,8 @@ export default function App() {
         setPurchasesSubTab={setPurchasesSubTab}
         onOpenInvoiceModal={handleOpenInvoiceModal}
         company={company}
+        currentUser={currentUser}
+        onOpenLoginModal={() => setIsLoginModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -134,6 +174,8 @@ export default function App() {
             isRefreshing={loading}
             onOpenInvoiceModal={handleOpenInvoiceModal}
             onSelectTab={setActiveTab}
+            currentUser={currentUser}
+            onOpenLoginModal={() => setIsLoginModalOpen(true)}
           />
         )}
 
@@ -159,6 +201,16 @@ export default function App() {
             <StaffView 
               onOpenInvoiceModal={handleOpenInvoiceModal}
               onViewInvoice={handleViewInvoice}
+              onSwitchUser={handleSwitchUser}
+            />
+          )}
+
+          {activeTab === 'staff-portal' && (
+            <StaffPortalView 
+              currentUser={currentUser}
+              onOpenInvoiceModal={handleOpenInvoiceModal}
+              onViewInvoice={handleViewInvoice}
+              onOpenLoginModal={() => setIsLoginModalOpen(true)}
             />
           )}
 
@@ -262,6 +314,7 @@ export default function App() {
         initialType={invoiceModalType}
         onClose={() => setIsInvoiceModalOpen(false)}
         onSuccess={handleInvoiceSuccess}
+        currentUser={currentUser}
       />
 
       {/* Printable Invoice / PDF Modal */}
@@ -269,6 +322,14 @@ export default function App() {
         isOpen={isPrintModalOpen}
         txnId={selectedTxnId}
         onClose={() => setIsPrintModalOpen(false)}
+      />
+
+      {/* Staff & Accountant Login Modal */}
+      <StaffLoginModal 
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+        currentLoggedInUser={currentUser}
       />
     </div>
   );
