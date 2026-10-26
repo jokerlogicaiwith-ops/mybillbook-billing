@@ -359,6 +359,9 @@ function createJsonDb() {
             let list = [...store.items];
             return list.sort((a, b) => a.name.localeCompare(b.name));
           }
+          if (cleanSql.includes('FROM bank_accounts')) {
+            return store.bank_accounts || [];
+          }
           return [];
         },
 

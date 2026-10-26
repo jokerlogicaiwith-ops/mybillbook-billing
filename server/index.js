@@ -548,12 +548,24 @@ app.get('/api/transactions/:id', (req, res) => {
       };
     }
     const company = db.prepare('SELECT * FROM company_settings LIMIT 1').get();
+    let bankAccounts = [];
+    try {
+      bankAccounts = db.prepare('SELECT * FROM bank_accounts').all() || [];
+    } catch(e) {}
+    const primaryBank = bankAccounts.find(b => b.account_number && b.account_number !== 'CASH') || bankAccounts[0] || {
+      name: company?.name || 'AVYAAN',
+      account_number: '761801010050603',
+      ifsc: 'UBIN0576182',
+      bank_name: 'Union Bank of India',
+      branch: 'KASBA TAJPUR'
+    };
 
     res.json({
       ...txn,
       items,
       party,
-      company
+      company,
+      bank: primaryBank
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
