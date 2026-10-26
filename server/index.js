@@ -560,6 +560,42 @@ app.get('/api/transactions/:id', (req, res) => {
   }
 });
 
+// Assign / Update Staff on an existing transaction
+app.patch('/api/transactions/:id/staff', (req, res) => {
+  try {
+    const { staff_id } = req.body;
+    let currentStaff = null;
+    if (staff_id) {
+      currentStaff = db.prepare('SELECT * FROM staff WHERE id = ?').get(staff_id);
+    }
+    const staff_code = currentStaff ? currentStaff.staff_code : '';
+    const staff_name = currentStaff ? currentStaff.name : '';
+    const staff_commission_rate = currentStaff ? (parseFloat(currentStaff.commission_rate) || 0) : 0;
+
+    db.prepare(`
+      UPDATE transactions 
+      SET staff_id = ?, staff_code = ?, staff_name = ?, staff_commission_rate = ?
+      WHERE id = ?
+    `).run(
+      currentStaff ? currentStaff.id : null,
+      staff_code,
+      staff_name,
+      staff_commission_rate,
+      req.params.id
+    );
+
+    res.json({
+      success: true,
+      staff_id: currentStaff ? currentStaff.id : null,
+      staff_code,
+      staff_name,
+      staff_commission_rate
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Public customer invoice view API
 app.get('/api/public/bill/:identifier', (req, res) => {
   try {

@@ -8,12 +8,25 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
   const [loading, setLoading] = useState(true);
   const [printFormat, setPrintFormat] = useState('a4'); // 'a4' | 'pos'
   const [posPaperWidth, setPosPaperWidth] = useState('80mm'); // '80mm' | '58mm'
+  const [staffList, setStaffList] = useState([]);
+  const [selectedStaffId, setSelectedStaffId] = useState('');
+  const [localStaffName, setLocalStaffName] = useState('');
+  const [localStaffCode, setLocalStaffCode] = useState('');
 
   useEffect(() => {
     if (isOpen && txnId) {
       loadInvoiceDetails();
+      loadStaffList();
     }
   }, [isOpen, txnId]);
+
+  const loadStaffList = async () => {
+    try {
+      const res = await fetch('/api/staff');
+      const data = await res.json();
+      if (Array.isArray(data)) setStaffList(data);
+    } catch (e) {}
+  };
 
   const loadInvoiceDetails = async () => {
     setLoading(true);
@@ -21,6 +34,9 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
       const res = await fetch(`/api/transactions/${txnId}`);
       const data = await res.json();
       setInvoice(data);
+      setLocalStaffName(data.staff_name || '');
+      setLocalStaffCode(data.staff_code || '');
+      setSelectedStaffId(data.staff_id ? String(data.staff_id) : '');
 
       // Generate UPI QR Code if balance due > 0 or total amount
       const upiId = data.company?.upi_id || '8130140936@upi';
@@ -32,6 +48,26 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
       console.error('Failed to load invoice', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStaffChange = async (e) => {
+    const sId = e.target.value;
+    setSelectedStaffId(sId);
+    const chosen = staffList.find(s => s.id === parseInt(sId));
+    const newName = chosen ? chosen.name : '';
+    const newCode = chosen ? chosen.staff_code : '';
+    setLocalStaffName(newName);
+    setLocalStaffCode(newCode);
+
+    try {
+      await fetch(`/api/transactions/${invoice?.id || txnId}/staff`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staff_id: sId ? parseInt(sId) : null })
+      });
+    } catch (err) {
+      console.error('Failed to update invoice staff', err);
     }
   };
 
@@ -261,7 +297,15 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
           ) : printFormat === 'a4' ? (
             // A4 Preview
             <div className="bg-white shadow-xl rounded-sm border border-slate-300 w-full max-w-[210mm] transition-all">
-              <A4InvoiceLayout invoice={invoice} qrCodeUrl={qrCodeUrl} />
+              <A4InvoiceLayout 
+                invoice={invoice} 
+                qrCodeUrl={qrCodeUrl} 
+                staffName={localStaffName || invoice.staff_name} 
+                staffCode={localStaffCode || invoice.staff_code}
+                staffList={staffList}
+                selectedStaffId={selectedStaffId}
+                onStaffChange={handleStaffChange}
+              />
             </div>
           ) : (
             // POS Machine Preview (Realistic Receipt Roll)
@@ -271,7 +315,16 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
               <div className="bg-amber-100 text-amber-900 text-[10px] text-center font-bold py-1 border-b border-amber-200 uppercase tracking-wider">
                 POS Machine Thermal Receipt ({posPaperWidth})
               </div>
-              <POSReceiptLayout invoice={invoice} qrCodeUrl={qrCodeUrl} paperWidth={posPaperWidth} />
+              <POSReceiptLayout 
+                invoice={invoice} 
+                qrCodeUrl={qrCodeUrl} 
+                paperWidth={posPaperWidth} 
+                staffName={localStaffName || invoice.staff_name} 
+                staffCode={localStaffCode || invoice.staff_code}
+                staffList={staffList}
+                selectedStaffId={selectedStaffId}
+                onStaffChange={handleStaffChange}
+              />
             </div>
           )}
         </div>
@@ -282,11 +335,24 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
       {printRoot && invoice && createPortal(
         printFormat === 'a4' ? (
           <div className="print-page-break-avoid w-full bg-white text-slate-900 font-sans p-0 m-0">
-            <A4InvoiceLayout invoice={invoice} qrCodeUrl={qrCodeUrl} isPrintView />
+            <A4InvoiceLayout 
+              invoice={invoice} 
+              qrCodeUrl={qrCodeUrl} 
+              staffName={localStaffName || invoice.staff_name} 
+              staffCode={localStaffCode || invoice.staff_code}
+              isPrintView 
+            />
           </div>
         ) : (
           <div className="print-page-break-avoid w-full bg-white text-slate-900 font-mono p-0 m-0">
-            <POSReceiptLayout invoice={invoice} qrCodeUrl={qrCodeUrl} paperWidth={posPaperWidth} isPrintView />
+            <POSReceiptLayout 
+              invoice={invoice} 
+              qrCodeUrl={qrCodeUrl} 
+              paperWidth={posPaperWidth} 
+              staffName={localStaffName || invoice.staff_name} 
+              staffCode={localStaffCode || invoice.staff_code}
+              isPrintView 
+            />
           </div>
         ),
         printRoot
@@ -300,10 +366,21 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
  * 1-PAGE GUARANTEED A4 INVOICE TEMPLATE
  * Designed with precise proportions and compact margins so it never spills over onto page 2!
  */
-function A4InvoiceLayout({ invoice, qrCodeUrl, isPrintView = false }) {
+function A4InvoiceLayout({ 
+  invoice, 
+  qrCodeUrl, 
+  isPrintView = false, 
+  staffName, 
+  staffCode, 
+  staffList = [], 
+  selectedStaffId = '', 
+  onStaffChange 
+}) {
   const company = invoice.company || {};
   const party = invoice.party || {};
   const isPaid = invoice.status === 'Paid' || invoice.balance_due <= 0;
+  const currentStaffName = staffName !== undefined && staffName !== '' ? staffName : (invoice.staff_name || 'Admin');
+  const currentStaffCode = staffCode !== undefined && staffCode !== '' ? staffCode : invoice.staff_code;
 
   return (
     <div className={`bg-white text-slate-900 font-sans ${isPrintView ? 'p-6 max-h-[275mm] overflow-hidden' : 'p-6 sm:p-7'}`}>
@@ -341,12 +418,32 @@ function A4InvoiceLayout({ invoice, qrCodeUrl, isPrintView = false }) {
           <p className="text-[11px] text-slate-600">
             Payment Mode: <span className="font-bold text-slate-950">{invoice.payment_type || 'Credit'}</span>
           </p>
-          <p className="text-[11px] text-slate-600">
-            Sales Staff: <span className="font-bold text-slate-950">{invoice.staff_name || 'Admin'}</span>
-            {invoice.staff_code && (
-              <span className="font-mono text-slate-600 font-semibold ml-1">({invoice.staff_code})</span>
+          <div className="text-[11px] text-slate-700 flex items-center justify-end flex-wrap gap-1 mt-0.5">
+            <span className="text-slate-600 font-semibold">Sales Staff:</span>
+            <span className="font-bold text-slate-950">{currentStaffName}</span>
+            {currentStaffCode ? (
+              <span className="font-mono bg-blue-100 text-blue-900 border border-blue-200 text-[10px] font-bold px-1.5 py-0.2 rounded">
+                ({currentStaffCode})
+              </span>
+            ) : (
+              <span className="font-mono text-slate-500 text-[10px] bg-slate-100 px-1 py-0.2 rounded">(ADM-001)</span>
             )}
-          </p>
+            {!isPrintView && onStaffChange && staffList.length > 0 && (
+              <select
+                value={selectedStaffId}
+                onChange={onStaffChange}
+                className="ml-2 text-[10px] font-bold border border-blue-400 bg-blue-50 text-blue-900 rounded px-1.5 py-0.5 print:hidden cursor-pointer hover:bg-blue-100 shadow-2xs"
+                title="Change Staff for this Bill"
+              >
+                <option value="">👤 Select / Change Staff</option>
+                {staffList.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.staff_code})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
         </div>
       </div>
 
@@ -476,9 +573,9 @@ function A4InvoiceLayout({ invoice, qrCodeUrl, isPrintView = false }) {
           <span className="font-bold text-slate-800">For {company.name || 'APOORV'}</span>
           <div className="mt-4 border-t border-slate-400 pt-0.5 w-36 text-center text-slate-500 text-[8px] space-y-0.5">
             <div>Authorized Signatory</div>
-            {invoice.staff_name && (
-              <div className="text-[8px] text-slate-600 font-medium">Billed By: {invoice.staff_name} {invoice.staff_code ? `(${invoice.staff_code})` : ''}</div>
-            )}
+            <div className="text-[8px] text-slate-700 font-bold">
+              Billed By: {currentStaffName} {currentStaffCode ? `(${currentStaffCode})` : '(ADM-001)'}
+            </div>
           </div>
         </div>
       </div>
@@ -492,10 +589,22 @@ function A4InvoiceLayout({ invoice, qrCodeUrl, isPrintView = false }) {
  * Designed for POS thermal receipt printers (80mm / 3 inch or 58mm / 2 inch roll).
  * Uses continuous paper roll layout, high-contrast thermal fonts, compact dividers, and thermal UPI QR.
  */
-function POSReceiptLayout({ invoice, qrCodeUrl, paperWidth = '80mm', isPrintView = false }) {
+function POSReceiptLayout({ 
+  invoice, 
+  qrCodeUrl, 
+  paperWidth = '80mm', 
+  isPrintView = false,
+  staffName,
+  staffCode,
+  staffList = [],
+  selectedStaffId = '',
+  onStaffChange
+}) {
   const company = invoice.company || {};
   const party = invoice.party || {};
   const is58 = paperWidth === '58mm';
+  const currentStaffName = staffName !== undefined && staffName !== '' ? staffName : (invoice.staff_name || 'Admin');
+  const currentStaffCode = staffCode !== undefined && staffCode !== '' ? staffCode : invoice.staff_code;
 
   return (
     <div className={`bg-white text-slate-950 font-mono leading-tight ${
@@ -534,12 +643,12 @@ function POSReceiptLayout({ invoice, qrCodeUrl, paperWidth = '80mm', isPrintView
           <span>Mode:</span>
           <span className="font-bold uppercase">{invoice.payment_type || 'Credit'}</span>
         </div>
-        {(invoice.staff_name || invoice.staff_code) && (
-          <div className="flex justify-between text-[9px] text-slate-800">
-            <span>Staff / Billed:</span>
-            <span className="font-bold">{invoice.staff_name} {invoice.staff_code ? `(${invoice.staff_code})` : ''}</span>
-          </div>
-        )}
+        <div className="flex justify-between items-center text-[9px] py-0.5 border-b border-dashed border-slate-300">
+          <span className="text-slate-700">Sales Staff / Billed:</span>
+          <span className="font-bold">
+            {currentStaffName} {currentStaffCode ? `(${currentStaffCode})` : '(ADM-001)'}
+          </span>
+        </div>
         <div className="flex justify-between pt-0.5">
           <span>Customer:</span>
           <span className="font-bold truncate max-w-[150px]">{invoice.party_name}</span>

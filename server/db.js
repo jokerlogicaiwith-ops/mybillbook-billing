@@ -500,6 +500,20 @@ function createJsonDb() {
             saveStore();
             return { lastInsertRowid: newId };
           }
+          if (cleanSql.includes('UPDATE transactions SET staff_id = ?')) {
+            const [staff_id, staff_code, staff_name, staff_commission_rate, id] = params;
+            const txn = store.transactions.find(t => t.id === Number(id));
+            if (txn) {
+              txn.staff_id = staff_id ? Number(staff_id) : null;
+              txn.staff_code = staff_code || '';
+              txn.staff_name = staff_name || '';
+              txn.staff_commission_rate = parseFloat(staff_commission_rate) || 0;
+              txn.staff_commission_amount = ((txn.amount || 0) * txn.staff_commission_rate) / 100;
+              saveStore();
+              return { changes: 1 };
+            }
+            return { changes: 0 };
+          }
           if (cleanSql.includes('INSERT INTO transaction_items')) {
             const [transaction_id, item_id, item_name, hsn_code, quantity, unit, rate, discount, tax_rate, tax_amount, total] = params;
             const newId = store.transaction_items.length ? Math.max(...store.transaction_items.map(ti => ti.id)) + 1 : 1;

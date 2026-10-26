@@ -111,6 +111,9 @@ export default function CreateInvoiceModal({
       const res = await fetch('/api/staff');
       const data = await res.json();
       setStaffList(data);
+      if (Array.isArray(data) && data.length > 0) {
+        setSelectedStaffId(prev => prev || String(data[0].id));
+      }
     } catch (err) {
       console.error('Failed to fetch staff', err);
     }
@@ -526,10 +529,10 @@ export default function CreateInvoiceModal({
                   />
                 </div>
 
-                <div className="mt-2.5">
+                <div className="mt-2.5 p-2 bg-blue-50/70 border border-blue-200 rounded-lg">
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-bold text-slate-700">
-                      Sales Staff / Billed By
+                    <label className="text-xs font-bold text-blue-900 flex items-center space-x-1">
+                      <span>👤 Sales Staff / Billed By:</span>
                     </label>
                     {selectedStaffId && (
                       <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
@@ -540,9 +543,9 @@ export default function CreateInvoiceModal({
                   <select
                     value={selectedStaffId}
                     onChange={(e) => setSelectedStaffId(e.target.value)}
-                    className="w-full text-xs font-semibold border border-slate-300 rounded-lg p-2 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500"
+                    className="w-full text-xs font-bold border border-blue-300 rounded-md p-2 bg-white text-slate-900 focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">-- No Staff (Store Admin) --</option>
+                    <option value="">-- No Staff (Store Admin ADM-001) --</option>
                     {staffList.map(s => (
                       <option key={s.id} value={s.id}>
                         {s.name} ({s.staff_code}) • {s.commission_rate}% Comm.
