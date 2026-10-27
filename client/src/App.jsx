@@ -147,6 +147,46 @@ export default function App() {
     }
   };
 
+  if (activeTab === 'settings') {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <SettingsView 
+          company={company} 
+          onSaveCompany={() => {
+            fetchCompany();
+            fetchDashboard();
+          }}
+          onBackToDashboard={() => setActiveTab('dashboard')}
+          onNavigateTab={(tab) => setActiveTab(tab)}
+        />
+
+        {/* Invoice Generator Modal */}
+        <CreateInvoiceModal 
+          isOpen={isInvoiceModalOpen}
+          initialType={invoiceModalType}
+          onClose={() => setIsInvoiceModalOpen(false)}
+          onSuccess={handleInvoiceSuccess}
+          currentUser={currentUser}
+        />
+
+        {/* Printable Invoice / PDF Modal */}
+        <InvoicePrintModal 
+          isOpen={isPrintModalOpen}
+          txnId={selectedTxnId}
+          onClose={() => setIsPrintModalOpen(false)}
+        />
+
+        {/* Staff & Accountant Login Modal */}
+        <StaffLoginModal 
+          isOpen={isLoginModalOpen}
+          onClose={() => setIsLoginModalOpen(false)}
+          onLoginSuccess={handleLoginSuccess}
+          currentLoggedInUser={currentUser}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar Navigation */}
@@ -161,6 +201,8 @@ export default function App() {
         setPurchasesSubTab={setPurchasesSubTab}
         onOpenInvoiceModal={handleOpenInvoiceModal}
         company={company}
+        onRefreshCompany={fetchCompany}
+        onRefreshDashboard={fetchDashboard}
         currentUser={currentUser}
         onOpenLoginModal={() => setIsLoginModalOpen(true)}
       />
@@ -278,12 +320,6 @@ export default function App() {
             </div>
           )}
 
-          {activeTab === 'settings' && (
-            <SettingsView 
-              company={company} 
-              onSaveCompany={fetchCompany}
-            />
-          )}
 
           {/* Fallback for other modules */}
           {['e-invoicing', 'automated-bills', 'expenses', 'pos-billing', 'ai-collections'].includes(activeTab) && (

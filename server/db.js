@@ -137,7 +137,17 @@ function initSqliteDb(sqliteDb) {
     "ALTER TABLE transactions ADD COLUMN accountant_code TEXT",
     "ALTER TABLE transactions ADD COLUMN accountant_name TEXT",
     "ALTER TABLE transactions ADD COLUMN accountant_commission_rate REAL DEFAULT 0",
-    "ALTER TABLE transactions ADD COLUMN accountant_commission_amount REAL DEFAULT 0"
+    "ALTER TABLE transactions ADD COLUMN accountant_commission_amount REAL DEFAULT 0",
+    "ALTER TABLE company_settings ADD COLUMN billing_address TEXT",
+    "ALTER TABLE company_settings ADD COLUMN city TEXT DEFAULT 'SAMASTIPUR'",
+    "ALTER TABLE company_settings ADD COLUMN state TEXT DEFAULT 'Bihar'",
+    "ALTER TABLE company_settings ADD COLUMN pincode TEXT DEFAULT '848101'",
+    "ALTER TABLE company_settings ADD COLUMN is_gst_registered INTEGER DEFAULT 1",
+    "ALTER TABLE company_settings ADD COLUMN business_type TEXT",
+    "ALTER TABLE company_settings ADD COLUMN industry_type TEXT",
+    "ALTER TABLE company_settings ADD COLUMN registration_type TEXT",
+    "ALTER TABLE company_settings ADD COLUMN website TEXT",
+    "ALTER TABLE company_settings ADD COLUMN is_active INTEGER DEFAULT 1"
   ];
   for (const colSql of newCols) {
     try { sqliteDb.exec(colSql); } catch (e) {}
@@ -306,7 +316,12 @@ function createJsonDb() {
         get: (...params) => {
           loadStore();
           if (cleanSql.includes('FROM company_settings')) {
-            return store.company_settings[0] || {};
+            if (cleanSql.includes('WHERE id = ?')) {
+              const matched = (store.company_settings || []).find(c => c.id === Number(params[0]));
+              return matched || (store.company_settings && store.company_settings[0]) || {};
+            }
+            const active = (store.company_settings || []).find(c => c.is_active);
+            return active || (store.company_settings && store.company_settings[0]) || {};
           }
           if (cleanSql.includes('SUM(current_balance) as to_collect')) {
             const sum = store.parties.filter(p => p.current_balance > 0).reduce((acc, p) => acc + p.current_balance, 0);
@@ -401,35 +416,92 @@ function createJsonDb() {
           if (cleanSql.includes('FROM bank_accounts')) {
             return store.bank_accounts || [];
           }
+          if (cleanSql.includes('FROM company_settings')) {
+            return store.company_settings || [];
+          }
           return [];
         },
 
         run: (...params) => {
           loadStore();
+          if (cleanSql.includes('UPDATE company_settings SET is_active = 0')) {
+            (store.company_settings || []).forEach(c => c.is_active = 0);
+            saveStore();
+            return { changes: 1 };
+          }
+          if (cleanSql.includes('UPDATE company_settings SET is_active = 1 WHERE id = ?')) {
+            const targetId = Number(params[0]);
+            (store.company_settings || []).forEach(c => {
+              c.is_active = (c.id === targetId ? 1 : 0);
+            });
+            saveStore();
+            return { changes: 1 };
+          }
+          if (cleanSql.includes('INSERT INTO company_settings')) {
+            const newId = (store.company_settings && store.company_settings.length) 
+              ? Math.max(...store.company_settings.map(c => c.id || 0)) + 1 
+              : 1;
+            const [
+              name, phone, email, gstin, address, upi_id, tagline, terms,
+              billing_address, city, state, pincode, is_gst_registered,
+              business_type, industry_type, registration_type, website, is_active
+            ] = params;
+            const newCompany = {
+              id: newId,
+              name: name || 'New Business',
+              phone: phone || '',
+              email: email || '',
+              gstin: gstin || '',
+              address: address || billing_address || '',
+              upi_id: upi_id || (phone ? `${phone}@upi` : ''),
+              tagline: tagline || '',
+              terms: terms || '1. Goods once sold will not be taken back.\n2. Subject to Samastipur jurisdiction.',
+              billing_address: billing_address || address || '',
+              city: city || 'SAMASTIPUR',
+              state: state || 'Bihar',
+              pincode: pincode || '848101',
+              is_gst_registered: is_gst_registered !== undefined ? (is_gst_registered ? 1 : 0) : 1,
+              business_type: business_type || 'Retailer, Wholesaler, Distributor, Manufacturer, Services',
+              industry_type: industry_type || 'General Trading',
+              registration_type: registration_type || 'Proprietorship',
+              website: website || '',
+              is_active: is_active !== undefined ? is_active : 1
+            };
+            if (newCompany.is_active) {
+              (store.company_settings || []).forEach(c => c.is_active = 0);
+            }
+            if (!store.company_settings) store.company_settings = [];
+            store.company_settings.push(newCompany);
+            saveStore();
+            return { lastInsertRowid: newId };
+          }
           if (cleanSql.includes('UPDATE company_settings')) {
+            let activeCompany = (store.company_settings || []).find(c => c.is_active) || (store.company_settings && store.company_settings[0]);
+            if (!activeCompany) {
+              activeCompany = { id: 1, name: 'VSRM COMPUTER CLASSES' };
+              store.company_settings = [activeCompany];
+            }
             if (typeof params[0] === 'object' && params[0] !== null) {
-              store.company_settings[0] = { ...store.company_settings[0], ...params[0] };
+              Object.assign(activeCompany, params[0]);
             } else {
-              const [name, phone, email, gstin, address, upi_id, tagline, terms, billing_address, city, state, pincode, is_gst_registered, business_type, industry_type, registration_type] = params;
-              store.company_settings[0] = { 
-                ...store.company_settings[0], 
-                name: name !== undefined ? name : store.company_settings[0].name, 
-                phone: phone !== undefined ? phone : store.company_settings[0].phone, 
-                email: email !== undefined ? email : store.company_settings[0].email, 
-                gstin: gstin !== undefined ? gstin : store.company_settings[0].gstin, 
-                address: address !== undefined ? address : store.company_settings[0].address, 
-                upi_id: upi_id !== undefined ? upi_id : store.company_settings[0].upi_id, 
-                tagline: tagline !== undefined ? tagline : store.company_settings[0].tagline, 
-                terms: terms !== undefined ? terms : store.company_settings[0].terms,
-                billing_address: billing_address || address || store.company_settings[0].billing_address,
-                city: city || store.company_settings[0].city,
-                state: state || store.company_settings[0].state,
-                pincode: pincode || store.company_settings[0].pincode,
-                is_gst_registered: is_gst_registered !== undefined ? is_gst_registered : store.company_settings[0].is_gst_registered,
-                business_type: business_type || store.company_settings[0].business_type,
-                industry_type: industry_type || store.company_settings[0].industry_type,
-                registration_type: registration_type || store.company_settings[0].registration_type
-              };
+              const [name, phone, email, gstin, address, upi_id, tagline, terms, billing_address, city, state, pincode, is_gst_registered, business_type, industry_type, registration_type, website] = params;
+              if (name !== undefined) activeCompany.name = name;
+              if (phone !== undefined) activeCompany.phone = phone;
+              if (email !== undefined) activeCompany.email = email;
+              if (gstin !== undefined) activeCompany.gstin = gstin;
+              if (address !== undefined) activeCompany.address = address;
+              if (upi_id !== undefined) activeCompany.upi_id = upi_id;
+              if (tagline !== undefined) activeCompany.tagline = tagline;
+              if (terms !== undefined) activeCompany.terms = terms;
+              if (billing_address || address) activeCompany.billing_address = billing_address || address;
+              if (city !== undefined) activeCompany.city = city;
+              if (state !== undefined) activeCompany.state = state;
+              if (pincode !== undefined) activeCompany.pincode = pincode;
+              if (is_gst_registered !== undefined) activeCompany.is_gst_registered = is_gst_registered ? 1 : 0;
+              if (business_type !== undefined) activeCompany.business_type = business_type;
+              if (industry_type !== undefined) activeCompany.industry_type = industry_type;
+              if (registration_type !== undefined) activeCompany.registration_type = registration_type;
+              if (website !== undefined) activeCompany.website = website;
             }
             saveStore();
             return { changes: 1 };

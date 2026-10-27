@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
@@ -10,7 +10,7 @@ import {
   Settings, 
   Plus, 
   ChevronRight, 
-  ChevronDown,
+  ChevronDown, 
   ShieldCheck,
   Award,
   Sparkles,
@@ -18,14 +18,18 @@ import {
   FileSpreadsheet,
   Repeat,
   ScanLine,
-  Users2
+  Users2,
+  Check
 } from 'lucide-react';
+import CreateBusinessModal from './CreateBusinessModal';
 
 export default function Sidebar({ 
   activeTab, 
   setActiveTab, 
   onOpenInvoiceModal, 
   company,
+  onRefreshCompany,
+  onRefreshDashboard,
   salesSubTab = 'invoices',
   setSalesSubTab,
   itemsSubTab = 'inventory',
@@ -36,10 +40,46 @@ export default function Sidebar({
   onOpenLoginModal
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [companyDropdownOpen, setCompanyDropdownOpen] = useState(false);
+  const [companiesList, setCompaniesList] = useState([]);
+  const [isCreateBusinessModalOpen, setIsCreateBusinessModalOpen] = useState(false);
   const [salesExpanded, setSalesExpanded] = useState(true);
   const [itemsExpanded, setItemsExpanded] = useState(true);
   const [purchasesExpanded, setPurchasesExpanded] = useState(true);
   const [showMoreAccounting, setShowMoreAccounting] = useState(false);
+
+  useEffect(() => {
+    fetchCompanies();
+  }, []);
+
+  const fetchCompanies = async () => {
+    try {
+      const res = await fetch('/api/companies');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setCompaniesList(data);
+      }
+    } catch (err) {
+      console.error('Error fetching companies in Sidebar:', err);
+    }
+  };
+
+  const handleSwitchCompany = async (companyId) => {
+    try {
+      const res = await fetch(`/api/companies/${companyId}/activate`, {
+        method: 'PUT'
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCompanyDropdownOpen(false);
+        fetchCompanies();
+        if (onRefreshCompany) onRefreshCompany();
+        if (onRefreshDashboard) onRefreshDashboard();
+      }
+    } catch (err) {
+      console.error('Error switching company:', err);
+    }
+  };
 
   const itemsSubmenuItems = [
     { id: 'inventory', label: 'Inventory' },
@@ -86,22 +126,77 @@ export default function Sidebar({
   };
 
   return (
+    <>
     <aside className="w-64 bg-[#111625] text-slate-300 flex flex-col h-screen fixed left-0 top-0 select-none border-r border-slate-800/90 z-30 font-sans">
-      {/* 1. Business Header matching screenshot */}
-      <div className="p-4 border-b border-slate-800/60 flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-full bg-[#1d4ed8] text-white font-bold flex items-center justify-center text-lg shadow-sm">
-            {company?.name ? company.name.charAt(0) : 'A'}
+      {/* 1. Business Header matching screenshot with Switcher Dropdown */}
+      <div className="p-4 border-b border-slate-800/60 relative">
+        <div 
+          onClick={() => {
+            fetchCompanies();
+            setCompanyDropdownOpen(!companyDropdownOpen);
+          }}
+          className="flex items-center justify-between cursor-pointer p-1 -m-1 rounded-xl hover:bg-slate-800/40 transition group"
+        >
+          <div className="flex items-center space-x-3 min-w-0">
+            <div className="w-10 h-10 rounded-full bg-[#1d4ed8] text-white font-bold flex items-center justify-center text-lg shadow-sm shrink-0">
+              {company?.name ? company.name.charAt(0).toUpperCase() : 'V'}
+            </div>
+            <div className="overflow-hidden min-w-0">
+              <h2 className="font-semibold text-white text-sm tracking-wide truncate group-hover:text-blue-200">
+                {company?.name || 'VSRM COMPUTER CLASSES'}
+              </h2>
+              <p className="text-xs text-slate-400 font-mono truncate">
+                {company?.phone || '8936863035'}
+              </p>
+            </div>
           </div>
-          <div className="overflow-hidden">
-            <h2 className="font-semibold text-white text-sm tracking-wide truncate">
-              {company?.name || 'APOORV'}
-            </h2>
-            <p className="text-xs text-slate-400 font-mono">
-              {company?.phone || '8130140936'}
-            </p>
-          </div>
+          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ml-1.5 ${companyDropdownOpen ? 'rotate-180 text-white' : ''}`} />
         </div>
+
+        {/* Business Switcher Dropdown */}
+        {companyDropdownOpen && (
+          <div className="absolute top-16 left-3 right-3 bg-white text-slate-900 rounded-xl shadow-2xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-3 py-1.5 border-b border-slate-100 flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Your Businesses</span>
+              <span className="text-[10px] font-semibold text-slate-500">{companiesList.length} Businesses</span>
+            </div>
+
+            <div className="max-h-48 overflow-y-auto py-1">
+              {companiesList.map((c) => {
+                const isActive = c.is_active === 1 || c.name === company?.name;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => handleSwitchCompany(c.id)}
+                    className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-blue-50/80 transition ${
+                      isActive ? 'bg-blue-50 font-bold text-blue-700' : 'text-slate-700'
+                    }`}
+                  >
+                    <div className="truncate mr-2">
+                      <div className="truncate text-xs">{c.name}</div>
+                      <div className="text-[10px] text-slate-400 font-mono">{c.phone}</div>
+                    </div>
+                    {isActive && <Check className="w-4 h-4 text-blue-600 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="pt-1.5 border-t border-slate-100 px-2 pb-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setCompanyDropdownOpen(false);
+                  setIsCreateBusinessModalOpen(true);
+                }}
+                className="w-full py-2 px-3 bg-[#ea580c] hover:bg-[#c2410c] text-white font-bold text-xs rounded-lg flex items-center justify-center space-x-1.5 transition shadow-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                <span>+ Create New Business</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 2. Main Action Button: + Create Sales Invoice ▾ matching screenshot */}
@@ -511,5 +606,17 @@ export default function Sidebar({
         </div>
       </div>
     </aside>
+
+    {/* Create New Business Modal from Sidebar */}
+    <CreateBusinessModal
+      isOpen={isCreateBusinessModalOpen}
+      onClose={() => setIsCreateBusinessModalOpen(false)}
+      onCompanyCreated={() => {
+        fetchCompanies();
+        if (onRefreshCompany) onRefreshCompany();
+        if (onRefreshDashboard) onRefreshDashboard();
+      }}
+    />
+    </>
   );
 }

@@ -14,11 +14,99 @@ app.use(express.json());
 const clientDistPath = path.resolve(__dirname, '../client/dist');
 app.use(express.static(clientDistPath));
 
-// 1. Company Settings
+// 1. Company Settings & Multi-Business Management
+app.get('/api/companies', (req, res) => {
+  try {
+    const companies = db.prepare('SELECT * FROM company_settings').all();
+    res.json(companies || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/company', (req, res) => {
   try {
-    const company = db.prepare('SELECT * FROM company_settings LIMIT 1').get();
+    let company = null;
+    try {
+      company = db.prepare('SELECT * FROM company_settings WHERE is_active = 1 LIMIT 1').get();
+    } catch (e) {}
+    if (!company) {
+      company = db.prepare('SELECT * FROM company_settings LIMIT 1').get();
+    }
     res.json(company || {});
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/companies', (req, res) => {
+  try {
+    const { 
+      name, phone, email, gstin, address, upi_id, tagline, terms,
+      billing_address, city, state, pincode, is_gst_registered,
+      business_type, industry_type, registration_type, website, make_active
+    } = req.body;
+
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ error: 'Business Name is required' });
+    }
+
+    const shouldActivate = make_active !== false ? 1 : 0;
+    if (shouldActivate) {
+      try {
+        db.prepare('UPDATE company_settings SET is_active = 0').run();
+      } catch (e) {}
+    }
+
+    const result = db.prepare(`
+      INSERT INTO company_settings (
+        name, phone, email, gstin, address, upi_id, tagline, terms,
+        billing_address, city, state, pincode, is_gst_registered,
+        business_type, industry_type, registration_type, website, is_active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      name.trim(),
+      phone || '',
+      email || '',
+      gstin || '',
+      address || billing_address || '',
+      upi_id || (phone ? `${phone}@upi` : ''),
+      tagline || '',
+      terms || '1. Goods once sold will not be taken back.\n2. Subject to Samastipur jurisdiction.',
+      billing_address || address || '',
+      city || 'SAMASTIPUR',
+      state || 'Bihar',
+      pincode || '848101',
+      is_gst_registered !== undefined ? (is_gst_registered ? 1 : 0) : 1,
+      business_type || 'Retailer, Wholesaler, Distributor, Manufacturer, Services',
+      industry_type || 'General Trading',
+      registration_type || 'Proprietorship',
+      website || '',
+      shouldActivate
+    );
+
+    const newCompany = db.prepare('SELECT * FROM company_settings WHERE id = ?').get(result.lastInsertRowid) || {
+      id: result.lastInsertRowid,
+      name,
+      phone,
+      is_active: shouldActivate
+    };
+
+    res.json({ success: true, company: newCompany });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/companies/:id/activate', (req, res) => {
+  try {
+    const targetId = Number(req.params.id);
+    try {
+      db.prepare('UPDATE company_settings SET is_active = 0').run();
+      db.prepare('UPDATE company_settings SET is_active = 1 WHERE id = ?').run(targetId);
+    } catch (e) {}
+    const active = db.prepare('SELECT * FROM company_settings WHERE id = ?').get(targetId);
+    res.json({ success: true, activeCompany: active });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -29,16 +117,18 @@ app.put('/api/company', (req, res) => {
     const { 
       name, phone, email, gstin, address, upi_id, tagline, terms,
       billing_address, city, state, pincode, is_gst_registered,
-      business_type, industry_type, registration_type
+      business_type, industry_type, registration_type, website
     } = req.body;
     db.prepare(`
       UPDATE company_settings 
-      SET name = ?, phone = ?, email = ?, gstin = ?, address = ?, upi_id = ?, tagline = ?, terms = ?
-      WHERE id = 1
+      SET name = ?, phone = ?, email = ?, gstin = ?, address = ?, upi_id = ?, tagline = ?, terms = ?,
+          billing_address = ?, city = ?, state = ?, pincode = ?, is_gst_registered = ?,
+          business_type = ?, industry_type = ?, registration_type = ?, website = ?
+      WHERE is_active = 1 OR id = 1
     `).run(
       name, phone, email, gstin, address || billing_address, upi_id, tagline, terms,
-      billing_address, city, state, pincode, is_gst_registered,
-      business_type, industry_type, registration_type
+      billing_address || address, city, state, pincode, is_gst_registered ? 1 : 0,
+      business_type, industry_type, registration_type, website || ''
     );
     res.json({ success: true });
   } catch (err) {
