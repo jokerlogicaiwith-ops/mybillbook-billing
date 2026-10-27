@@ -128,22 +128,31 @@ app.delete('/api/companies/:id', (req, res) => {
 app.put('/api/company', (req, res) => {
   try {
     const { 
-      name, phone, email, gstin, address, upi_id, tagline, terms,
+      id, name, phone, email, gstin, address, upi_id, tagline, terms,
       billing_address, city, state, pincode, is_gst_registered,
       business_type, industry_type, registration_type, website
     } = req.body;
+
+    let targetId = id ? Number(id) : null;
+    if (!targetId) {
+      const active = db.prepare('SELECT id FROM company_settings WHERE is_active = 1 LIMIT 1').get();
+      targetId = active ? active.id : 1;
+    }
+
     db.prepare(`
       UPDATE company_settings 
       SET name = ?, phone = ?, email = ?, gstin = ?, address = ?, upi_id = ?, tagline = ?, terms = ?,
           billing_address = ?, city = ?, state = ?, pincode = ?, is_gst_registered = ?,
           business_type = ?, industry_type = ?, registration_type = ?, website = ?
-      WHERE is_active = 1 OR id = 1
+      WHERE id = ?
     `).run(
       name, phone, email, gstin, address || billing_address, upi_id, tagline, terms,
       billing_address || address, city, state, pincode, is_gst_registered ? 1 : 0,
-      business_type, industry_type, registration_type, website || ''
+      business_type, industry_type, registration_type, website || '',
+      targetId
     );
-    res.json({ success: true });
+    const updated = db.prepare('SELECT * FROM company_settings WHERE id = ?').get(targetId);
+    res.json({ success: true, company: updated });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -19,9 +19,11 @@ import {
   Repeat,
   ScanLine,
   Users2,
-  Check
+  Check,
+  Pencil
 } from 'lucide-react';
 import CreateBusinessModal from './CreateBusinessModal';
+import EditBusinessModal from './EditBusinessModal';
 
 export default function Sidebar({ 
   activeTab, 
@@ -43,6 +45,8 @@ export default function Sidebar({
   const [companyDropdownOpen, setCompanyDropdownOpen] = useState(false);
   const [companiesList, setCompaniesList] = useState([]);
   const [isCreateBusinessModalOpen, setIsCreateBusinessModalOpen] = useState(false);
+  const [isEditBusinessModalOpen, setIsEditBusinessModalOpen] = useState(false);
+  const [companyToEdit, setCompanyToEdit] = useState(null);
   const [salesExpanded, setSalesExpanded] = useState(true);
   const [itemsExpanded, setItemsExpanded] = useState(true);
   const [purchasesExpanded, setPurchasesExpanded] = useState(true);
@@ -165,19 +169,38 @@ export default function Sidebar({
               {companiesList.map((c) => {
                 const isActive = c.is_active === 1 || c.name === company?.name;
                 return (
-                  <button
+                  <div
                     key={c.id}
-                    onClick={() => handleSwitchCompany(c.id)}
-                    className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-blue-50/80 transition ${
-                      isActive ? 'bg-blue-50 font-bold text-blue-700' : 'text-slate-700'
+                    className={`w-full px-3 py-2 text-xs flex items-center justify-between hover:bg-blue-50/80 transition group ${
+                      isActive ? 'bg-blue-50/70 font-bold text-blue-700' : 'text-slate-700'
                     }`}
                   >
-                    <div className="truncate mr-2">
-                      <div className="truncate text-xs">{c.name}</div>
+                    <button
+                      type="button"
+                      onClick={() => handleSwitchCompany(c.id)}
+                      className="flex-1 text-left truncate mr-2 cursor-pointer"
+                    >
+                      <div className="truncate text-xs font-bold">{c.name}</div>
                       <div className="text-[10px] text-slate-400 font-mono">{c.phone}</div>
+                    </button>
+
+                    <div className="flex items-center space-x-1 shrink-0">
+                      {isActive && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                      <button
+                        type="button"
+                        title="Edit Business Name & Details (नाम बदलें)"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCompanyToEdit(c);
+                          setIsEditBusinessModalOpen(true);
+                          setCompanyDropdownOpen(false);
+                        }}
+                        className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-md transition cursor-pointer"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                    {isActive && <Check className="w-4 h-4 text-blue-600 shrink-0" />}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -612,6 +635,18 @@ export default function Sidebar({
       isOpen={isCreateBusinessModalOpen}
       onClose={() => setIsCreateBusinessModalOpen(false)}
       onCompanyCreated={() => {
+        fetchCompanies();
+        if (onRefreshCompany) onRefreshCompany();
+        if (onRefreshDashboard) onRefreshDashboard();
+      }}
+    />
+
+    {/* Edit Business Name & Details Modal from Sidebar */}
+    <EditBusinessModal
+      isOpen={isEditBusinessModalOpen}
+      company={companyToEdit || company}
+      onClose={() => setIsEditBusinessModalOpen(false)}
+      onUpdated={(updated) => {
         fetchCompanies();
         if (onRefreshCompany) onRefreshCompany();
         if (onRefreshDashboard) onRefreshDashboard();

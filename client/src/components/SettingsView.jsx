@@ -26,9 +26,11 @@ import {
   HelpCircle,
   LogOut,
   Check,
-  AlertCircle
+  AlertCircle,
+  Pencil
 } from 'lucide-react';
 import CreateBusinessModal from './CreateBusinessModal';
+import EditBusinessModal from './EditBusinessModal';
 
 export default function SettingsView({ 
   company, 
@@ -66,6 +68,8 @@ export default function SettingsView({
   const [companiesList, setCompaniesList] = useState([]);
   const [companySwitcherOpen, setCompanySwitcherOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [companyToEdit, setCompanyToEdit] = useState(null);
 
   useEffect(() => {
     fetchCompanies();
@@ -86,6 +90,7 @@ export default function SettingsView({
   useEffect(() => {
     if (company) {
       setFormData({
+        id: company.id,
         name: company.name || 'VSRM COMPUTER CLASSES',
         phone: company.phone || '8936863035',
         email: company.email || 'vsrmcomputerclasses@gmail.com',
@@ -140,6 +145,7 @@ export default function SettingsView({
     try {
       const payload = {
         ...formData,
+        id: formData.id || company?.id,
         address: formData.billing_address || formData.address,
         website: activeDetailVal
       };
@@ -225,19 +231,37 @@ export default function SettingsView({
                 {companiesList.map((c) => {
                   const isActive = c.is_active === 1 || c.name === formData.name;
                   return (
-                    <button
+                    <div
                       key={c.id}
-                      onClick={() => handleSwitchCompany(c.id)}
-                      className={`w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-blue-50/70 transition ${
+                      className={`w-full px-3 py-2 text-xs flex items-center justify-between hover:bg-blue-50/70 transition ${
                         isActive ? 'bg-blue-50 font-bold text-blue-700' : 'text-slate-700'
                       }`}
                     >
-                      <div className="truncate mr-2">
-                        <div className="truncate text-xs">{c.name}</div>
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchCompany(c.id)}
+                        className="flex-1 text-left truncate mr-2 cursor-pointer"
+                      >
+                        <div className="truncate text-xs font-bold">{c.name}</div>
                         <div className="text-[10px] text-slate-400 font-mono">{c.phone}</div>
+                      </button>
+                      <div className="flex items-center space-x-1 shrink-0">
+                        {isActive && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                        <button
+                          type="button"
+                          title="Edit Business Name (नाम बदलें)"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCompanyToEdit(c);
+                            setIsEditModalOpen(true);
+                            setCompanySwitcherOpen(false);
+                          }}
+                          className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-md transition cursor-pointer"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
                       </div>
-                      {isActive && <Check className="w-4 h-4 text-blue-600 shrink-0" />}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -427,17 +451,25 @@ export default function SettingsView({
 
                 {/* Business Name */}
                 <div className="sm:col-span-8">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Business Name <span className="text-red-500">*</span>
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-slate-800">
+                      Business Name (व्यापार का नाम) <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[10px] bg-blue-50 text-blue-700 font-semibold px-2 py-0.5 rounded-md border border-blue-200">
+                      ✏️ नाम बदलें & 'Save Changes' दबाएं
+                    </span>
+                  </div>
                   <input
                     type="text"
                     required
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Enter business name"
-                    className="w-full border border-slate-300 rounded-lg p-2.5 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    className="w-full border-2 border-blue-200 focus:border-blue-600 rounded-lg p-2.5 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                   />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Yehi naam aapke sabhi Invoice, Bill aur Reports par print hoga.
+                  </p>
                 </div>
               </div>
 
@@ -782,6 +814,19 @@ export default function SettingsView({
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCompanyCreated={handleCompanyCreated}
+      />
+
+      {/* Edit Business Modal */}
+      <EditBusinessModal
+        isOpen={isEditModalOpen}
+        company={companyToEdit || company}
+        onClose={() => setIsEditModalOpen(false)}
+        onUpdated={(updated) => {
+          fetchCompanies();
+          if (onSaveCompany) onSaveCompany();
+          setSaved(true);
+          setTimeout(() => setSaved(false), 3500);
+        }}
       />
     </div>
   );

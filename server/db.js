@@ -476,7 +476,17 @@ function createJsonDb() {
             return { lastInsertRowid: newId };
           }
           if (cleanSql.includes('UPDATE company_settings')) {
-            let activeCompany = (store.company_settings || []).find(c => c.is_active) || (store.company_settings && store.company_settings[0]);
+            let activeCompany = null;
+            if (params.length > 0 && typeof params[params.length - 1] === 'number') {
+              const targetId = params[params.length - 1];
+              activeCompany = (store.company_settings || []).find(c => c.id === targetId);
+            }
+            if (!activeCompany && typeof params[0] === 'object' && params[0]?.id) {
+              activeCompany = (store.company_settings || []).find(c => c.id === params[0].id);
+            }
+            if (!activeCompany) {
+              activeCompany = (store.company_settings || []).find(c => c.is_active) || (store.company_settings && store.company_settings[0]);
+            }
             if (!activeCompany) {
               activeCompany = { id: 1, name: 'VSRM COMPUTER CLASSES' };
               store.company_settings = [activeCompany];
