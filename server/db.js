@@ -600,6 +600,16 @@ function createJsonDb() {
             }
             return { changes: 0 };
           }
+          if (cleanSql.includes('DELETE FROM company_settings WHERE id = ?')) {
+            const [id] = params;
+            const idx = (store.company_settings || []).findIndex(c => c.id === Number(id));
+            if (idx !== -1) {
+              store.company_settings.splice(idx, 1);
+              saveStore();
+              return { changes: 1 };
+            }
+            return { changes: 0 };
+          }
           if (cleanSql.includes('INSERT INTO transactions')) {
             const [
               txn_no, type, date, party_id, party_name, subtotal, tax_amount, discount, 

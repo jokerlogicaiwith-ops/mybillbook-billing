@@ -112,6 +112,19 @@ app.put('/api/companies/:id/activate', (req, res) => {
   }
 });
 
+app.delete('/api/companies/:id', (req, res) => {
+  try {
+    const targetId = Number(req.params.id);
+    if (targetId === 1) {
+      return res.status(400).json({ error: 'Primary business (ID 1) cannot be deleted' });
+    }
+    db.prepare('DELETE FROM company_settings WHERE id = ?').run(targetId);
+    res.json({ success: true, message: 'Company deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.put('/api/company', (req, res) => {
   try {
     const { 
