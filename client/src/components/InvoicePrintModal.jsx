@@ -65,9 +65,11 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
   const [printFormat, setPrintFormat] = useState('a4'); // 'a4' | 'pos'
   const [posPaperWidth, setPosPaperWidth] = useState('80mm'); // '80mm' | '58mm'
   const [staffList, setStaffList] = useState([]);
-  const [selectedStaffId, setSelectedStaffId] = useState('');
-  const [localStaffName, setLocalStaffName] = useState('');
-  const [localStaffCode, setLocalStaffCode] = useState('');
+  const [selectedSalesmanId, setSelectedSalesmanId] = useState('');
+  const [localSalesmanName, setLocalSalesmanName] = useState('');
+  const [localSalesmanCode, setLocalSalesmanCode] = useState('');
+  const [localAccountantName, setLocalAccountantName] = useState('');
+  const [localAccountantCode, setLocalAccountantCode] = useState('');
 
   // Multi-copy state (Original, Duplicate, Triplicate, Delivery Note, Packing Slip)
   const [copiesConfig, setCopiesConfig] = useState({
@@ -100,9 +102,15 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
       const res = await fetch(`/api/transactions/${txnId}`);
       const data = await res.json();
       setInvoice(data);
-      setLocalStaffName(data.staff_name || '');
-      setLocalStaffCode(data.staff_code || '');
-      setSelectedStaffId(data.staff_id ? String(data.staff_id) : '');
+      const sName = data.salesman_name || data.staff_name || '';
+      const sCode = data.salesman_code || data.staff_code || '';
+      const sId = data.salesman_id || data.staff_id || '';
+      setLocalSalesmanName(sName);
+      setLocalSalesmanCode(sCode);
+      setSelectedSalesmanId(sId ? String(sId) : '');
+
+      setLocalAccountantName(data.accountant_name || '');
+      setLocalAccountantCode(data.accountant_code || '');
 
       // Generate UPI QR Code if balance due > 0 or total amount
       const upiId = data.company?.upi_id || '8130140936@upi';
@@ -117,20 +125,23 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
     }
   };
 
-  const handleStaffChange = async (e) => {
+  const handleSalesmanChange = async (e) => {
     const sId = e.target.value;
-    setSelectedStaffId(sId);
+    setSelectedSalesmanId(sId);
     const chosen = staffList.find(s => s.id === parseInt(sId));
     const newName = chosen ? chosen.name : '';
     const newCode = chosen ? chosen.staff_code : '';
-    setLocalStaffName(newName);
-    setLocalStaffCode(newCode);
+    setLocalSalesmanName(newName);
+    setLocalSalesmanCode(newCode);
 
     try {
       await fetch(`/api/transactions/${invoice?.id || txnId}/staff`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staff_id: sId ? parseInt(sId) : null })
+        body: JSON.stringify({ 
+          staff_id: sId ? parseInt(sId) : null,
+          salesman_id: sId ? parseInt(sId) : null
+        })
       });
     } catch (err) {
       console.error('Failed to update invoice staff', err);
@@ -326,6 +337,26 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
               <span>Print POS Machine</span>
             </button>
 
+            {/* Salesman Switcher in Toolbar */}
+            {staffList.length > 0 && (
+              <div className="hidden lg:flex items-center space-x-1.5 bg-slate-800 px-2 py-1 rounded-lg border border-slate-700 text-xs">
+                <span className="text-slate-300 font-medium">Salesman:</span>
+                <select
+                  value={selectedSalesmanId}
+                  onChange={handleSalesmanChange}
+                  className="bg-slate-900 text-amber-300 font-bold border border-slate-600 rounded px-2 py-0.5 text-xs focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                  title="Change Salesman for this invoice"
+                >
+                  <option value="">Direct / Store</option>
+                  {staffList.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.staff_code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <button
               onClick={onClose}
               className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
@@ -491,11 +522,10 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
                       copyId={copyItem.id}
                       copyType={copyItem.docType}
                       copyTitle={copyItem.title}
-                      staffName={localStaffName || invoice.staff_name} 
-                      staffCode={localStaffCode || invoice.staff_code}
-                      staffList={staffList}
-                      selectedStaffId={selectedStaffId}
-                      onStaffChange={handleStaffChange}
+                      salesmanName={localSalesmanName || invoice.salesman_name || invoice.staff_name} 
+                      salesmanCode={localSalesmanCode || invoice.salesman_code || invoice.staff_code}
+                      accountantName={localAccountantName || invoice.accountant_name}
+                      accountantCode={localAccountantCode || invoice.accountant_code}
                       qrCodeUrl={qrCodeUrl}
                     />
                   </div>
@@ -513,11 +543,10 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
                 invoice={invoice} 
                 qrCodeUrl={qrCodeUrl} 
                 paperWidth={posPaperWidth} 
-                staffName={localStaffName || invoice.staff_name} 
-                staffCode={localStaffCode || invoice.staff_code}
-                staffList={staffList}
-                selectedStaffId={selectedStaffId}
-                onStaffChange={handleStaffChange}
+                salesmanName={localSalesmanName || invoice.salesman_name || invoice.staff_name} 
+                salesmanCode={localSalesmanCode || invoice.salesman_code || invoice.staff_code}
+                accountantName={localAccountantName || invoice.accountant_name}
+                accountantCode={localAccountantCode || invoice.accountant_code}
               />
             </div>
           )}
@@ -543,8 +572,10 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
                   copyId={copyItem.id}
                   copyType={copyItem.docType}
                   copyTitle={copyItem.title}
-                  staffName={localStaffName || invoice.staff_name} 
-                  staffCode={localStaffCode || invoice.staff_code}
+                  salesmanName={localSalesmanName || invoice.salesman_name || invoice.staff_name} 
+                  salesmanCode={localSalesmanCode || invoice.salesman_code || invoice.staff_code}
+                  accountantName={localAccountantName || invoice.accountant_name}
+                  accountantCode={localAccountantCode || invoice.accountant_code}
                   qrCodeUrl={qrCodeUrl}
                   isPrintView
                 />
@@ -557,8 +588,10 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
               invoice={invoice} 
               qrCodeUrl={qrCodeUrl} 
               paperWidth={posPaperWidth} 
-              staffName={localStaffName || invoice.staff_name} 
-              staffCode={localStaffCode || invoice.staff_code}
+              salesmanName={localSalesmanName || invoice.salesman_name || invoice.staff_name} 
+              salesmanCode={localSalesmanCode || invoice.salesman_code || invoice.staff_code}
+              accountantName={localAccountantName || invoice.accountant_name}
+              accountantCode={localAccountantCode || invoice.accountant_code}
               isPrintView 
             />
           </div>
@@ -591,19 +624,20 @@ function A4GSTInvoiceLayout({
   copyTitle = 'Original for Recipient',
   qrCodeUrl, 
   isPrintView = false, 
-  staffName, 
-  staffCode, 
-  staffList = [], 
-  selectedStaffId = '', 
-  onStaffChange 
+  salesmanName, 
+  salesmanCode, 
+  accountantName,
+  accountantCode
 }) {
   const company = invoice.company || {};
   const party = invoice.party || {};
   const bank = invoice.bank || {};
   const items = invoice.items || [];
 
-  const currentStaffName = staffName !== undefined && staffName !== '' ? staffName : (invoice.staff_name || 'Admin');
-  const currentStaffCode = staffCode !== undefined && staffCode !== '' ? staffCode : invoice.staff_code;
+  const resolvedSalesmanName = salesmanName || invoice.salesman_name || invoice.staff_name || 'Rahul Sharma';
+  const resolvedSalesmanCode = salesmanCode || invoice.salesman_code || invoice.staff_code || 'STF-101';
+  const resolvedAccountantName = accountantName || invoice.accountant_name || '';
+  const resolvedAccountantCode = accountantCode || invoice.accountant_code || '';
 
   // Calculate totals
   const totalQty = items.reduce((sum, item) => sum + (parseFloat(item.quantity) || 1), 0);
@@ -726,6 +760,20 @@ function A4GSTInvoiceLayout({
             <span className="mr-2">:</span>
             <span>{party.state || 'Bihar'}</span>
           </div>
+          <div className="flex items-center text-black font-semibold pt-0.5 border-t border-slate-300">
+            <span className="w-28 font-bold text-slate-900">Salesman Name</span>
+            <span className="mr-2">:</span>
+            <span className="font-bold text-slate-950">
+              {resolvedSalesmanName} {resolvedSalesmanCode ? `(${resolvedSalesmanCode})` : ''}
+            </span>
+          </div>
+          {resolvedAccountantName && (
+            <div className="flex items-center text-slate-700 text-[9px]">
+              <span className="w-28 font-medium text-slate-600">Billed By</span>
+              <span className="mr-2">:</span>
+              <span>{resolvedAccountantName} {resolvedAccountantCode ? `(${resolvedAccountantCode})` : ''}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1036,33 +1084,23 @@ function A4GSTInvoiceLayout({
                 For, {company.name || 'AVYAAN'}
               </div>
 
-              {/* Staff attribution & Selector */}
-              <div className="text-[9px] text-slate-700 mt-2 flex items-center justify-center flex-wrap gap-1">
-                <span>Sales Staff:</span>
-                <span className="font-bold text-black">{currentStaffName}</span>
-                {currentStaffCode ? (
-                  <span className="font-mono bg-blue-50 text-blue-900 border border-blue-200 text-[8.5px] font-bold px-1 py-0.2 rounded">
-                    ({currentStaffCode})
-                  </span>
-                ) : (
-                  <span className="font-mono text-slate-500 text-[8.5px]">(ADM-001)</span>
-                )}
-
-                {/* Inline staff switcher if in screen preview */}
-                {!isPrintView && onStaffChange && staffList.length > 0 && (
-                  <select
-                    value={selectedStaffId}
-                    onChange={onStaffChange}
-                    className="ml-1 text-[9px] font-bold border border-blue-400 bg-blue-50 text-blue-900 rounded px-1 py-0.2 print:hidden cursor-pointer hover:bg-blue-100"
-                    title="Change Staff for this Bill"
-                  >
-                    <option value="">👤 Change Staff</option>
-                    {staffList.map(s => (
-                      <option key={s.id} value={s.id}>
-                        {s.name} ({s.staff_code})
-                      </option>
-                    ))}
-                  </select>
+              {/* Salesman & Accountant Signatory Info */}
+              <div className="text-[9px] text-slate-800 mt-2 space-y-0.5 text-center">
+                <div className="flex items-center justify-center space-x-1">
+                  <span className="text-slate-600 font-medium">Salesman:</span>
+                  <span className="font-bold text-black">{resolvedSalesmanName}</span>
+                  {resolvedSalesmanCode && (
+                    <span className="font-mono text-slate-600 text-[8.5px]">({resolvedSalesmanCode})</span>
+                  )}
+                </div>
+                {resolvedAccountantName && (
+                  <div className="flex items-center justify-center space-x-1 text-[8.5px] text-slate-600">
+                    <span>Billed By:</span>
+                    <span className="font-medium text-slate-800">{resolvedAccountantName}</span>
+                    {resolvedAccountantCode && (
+                      <span className="font-mono text-slate-500">({resolvedAccountantCode})</span>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -1105,17 +1143,18 @@ function POSReceiptLayout({
   qrCodeUrl, 
   paperWidth = '80mm', 
   isPrintView = false,
-  staffName,
-  staffCode,
-  staffList = [],
-  selectedStaffId = '',
-  onStaffChange
+  salesmanName,
+  salesmanCode,
+  accountantName,
+  accountantCode
 }) {
   const company = invoice.company || {};
   const party = invoice.party || {};
   const is58 = paperWidth === '58mm';
-  const currentStaffName = staffName !== undefined && staffName !== '' ? staffName : (invoice.staff_name || 'Admin');
-  const currentStaffCode = staffCode !== undefined && staffCode !== '' ? staffCode : invoice.staff_code;
+  const resolvedSalesmanName = salesmanName || invoice.salesman_name || invoice.staff_name || 'Rahul Sharma';
+  const resolvedSalesmanCode = salesmanCode || invoice.salesman_code || invoice.staff_code || 'STF-101';
+  const resolvedAccountantName = accountantName || invoice.accountant_name || '';
+  const resolvedAccountantCode = accountantCode || invoice.accountant_code || '';
 
   return (
     <div className={`bg-white text-slate-950 font-mono leading-tight ${
@@ -1155,11 +1194,17 @@ function POSReceiptLayout({
           <span className="font-bold uppercase">{invoice.payment_type || 'Credit'}</span>
         </div>
         <div className="flex justify-between items-center text-[9px] py-0.5 border-b border-dashed border-slate-300">
-          <span className="text-slate-700">Sales Staff / Billed:</span>
+          <span className="text-slate-700">Salesman:</span>
           <span className="font-bold">
-            {currentStaffName} {currentStaffCode ? `(${currentStaffCode})` : '(ADM-001)'}
+            {resolvedSalesmanName} {resolvedSalesmanCode ? `(${resolvedSalesmanCode})` : ''}
           </span>
         </div>
+        {resolvedAccountantName && (
+          <div className="flex justify-between items-center text-[8.5px] py-0.5 border-b border-dashed border-slate-300 text-slate-600">
+            <span>Billed By:</span>
+            <span>{resolvedAccountantName} {resolvedAccountantCode ? `(${resolvedAccountantCode})` : ''}</span>
+          </div>
+        )}
         <div className="flex justify-between pt-0.5">
           <span>Customer:</span>
           <span className="font-bold truncate max-w-[150px]">{invoice.party_name}</span>

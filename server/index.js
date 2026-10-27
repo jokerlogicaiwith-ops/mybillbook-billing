@@ -313,16 +313,46 @@ app.get('/api/staff/:id/portal', (req, res) => {
 
     const allTxns = db.prepare('SELECT * FROM transactions').all();
     const staffTxns = allTxns.filter(t => 
+      (t.salesman_id === staff.id) || 
+      (t.salesman_code && t.salesman_code === staff.staff_code) ||
+      (t.accountant_id === staff.id) ||
+      (t.accountant_code && t.accountant_code === staff.staff_code) ||
       (t.staff_id === staff.id) || 
       (t.staff_code && t.staff_code === staff.staff_code) ||
-      (t.staff_name && t.staff_name.toLowerCase() === staff.name.toLowerCase())
+      (t.staff_name && t.staff_name.toLowerCase() === staff.name.toLowerCase()) ||
+      (t.salesman_name && t.salesman_name.toLowerCase() === staff.name.toLowerCase()) ||
+      (t.accountant_name && t.accountant_name.toLowerCase() === staff.name.toLowerCase())
     );
 
     const totalSales = staffTxns.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
     const totalCommission = staffTxns.reduce((sum, t) => {
-      if (t.staff_commission_amount) return sum + parseFloat(t.staff_commission_amount);
-      const rate = parseFloat(staff.commission_rate) || 0;
-      return sum + ((parseFloat(t.amount) || 0) * rate) / 100;
+      let comm = 0;
+      const isSalesman = (t.salesman_id === staff.id) || (t.salesman_code === staff.staff_code) || (t.staff_id === staff.id);
+      const isAccountant = (t.accountant_id === staff.id) || (t.accountant_code === staff.staff_code);
+
+      if (isSalesman) {
+        if (t.salesman_commission_amount) {
+          comm += parseFloat(t.salesman_commission_amount);
+        } else if (t.staff_commission_amount) {
+          comm += parseFloat(t.staff_commission_amount);
+        } else {
+          const rate = parseFloat(t.salesman_commission_rate || t.staff_commission_rate || staff.commission_rate) || 0;
+          comm += ((parseFloat(t.amount) || 0) * rate) / 100;
+        }
+      }
+      if (isAccountant) {
+        if (t.accountant_commission_amount) {
+          comm += parseFloat(t.accountant_commission_amount);
+        } else {
+          const rate = parseFloat(t.accountant_commission_rate || staff.commission_rate) || 0;
+          comm += ((parseFloat(t.amount) || 0) * rate) / 100;
+        }
+      }
+      if (!isSalesman && !isAccountant) {
+        const rate = parseFloat(staff.commission_rate) || 0;
+        comm += ((parseFloat(t.amount) || 0) * rate) / 100;
+      }
+      return sum + comm;
     }, 0);
 
     res.json({
@@ -708,36 +738,81 @@ app.get('/api/transactions/:id', (req, res) => {
   }
 });
 
-// Assign / Update Staff on an existing transaction
+// Assign / Update Salesman / Staff on an existing transaction
 app.patch('/api/transactions/:id/staff', (req, res) => {
   try {
-    const { staff_id } = req.body;
+    const { staff_id, salesman_id, accountant_id } = req.body;
+    const targetSalesmanId = salesman_id || staff_id;
     let currentStaff = null;
-    if (staff_id) {
-      currentStaff = db.prepare('SELECT * FROM staff WHERE id = ?').get(staff_id);
+    if (targetSalesmanId) {
+      currentStaff = db.prepare('SELECT * FROM staff WHERE id = ?').get(targetSalesmanId);
     }
     const staff_code = currentStaff ? currentStaff.staff_code : '';
     const staff_name = currentStaff ? currentStaff.name : '';
     const staff_commission_rate = currentStaff ? (parseFloat(currentStaff.commission_rate) || 0) : 0;
 
+    let currentAccountant = null;
+    if (accountant_id) {
+      currentAccountant = db.prepare('SELECT * FROM staff WHERE id = ?').get(accountant_id);
+    }
+    const accountant_code = currentAccountant ? currentAccountant.staff_code : '';
+    const accountant_name = currentAccountant ? currentAccountant.name : '';
+    const accountant_commission_rate = currentAccountant ? (parseFloat(currentAccountant.commission_rate) || 0) : 0;
+
+    // Fetch existing txn for commission calculation
+    const txn = db.prepare('SELECT * FROM transactions WHERE id = ?').get(req.params.id);
+    const amount = txn ? (parseFloat(txn.amount) || 0) : 0;
+    const staff_commission_amount = (amount * staff_commission_rate) / 100;
+    const accountant_commission_amount = (amount * accountant_commission_rate) / 100;
+
     db.prepare(`
       UPDATE transactions 
-      SET staff_id = ?, staff_code = ?, staff_name = ?, staff_commission_rate = ?
+      SET staff_id = ?, staff_code = ?, staff_name = ?, staff_commission_rate = ?, staff_commission_amount = ?,
+          salesman_id = ?, salesman_code = ?, salesman_name = ?, salesman_commission_rate = ?, salesman_commission_amount = ?
       WHERE id = ?
     `).run(
       currentStaff ? currentStaff.id : null,
       staff_code,
       staff_name,
       staff_commission_rate,
+      staff_commission_amount,
+      currentStaff ? currentStaff.id : null,
+      staff_code,
+      staff_name,
+      staff_commission_rate,
+      staff_commission_amount,
       req.params.id
     );
+
+    if (accountant_id !== undefined) {
+      db.prepare(`
+        UPDATE transactions
+        SET accountant_id = ?, accountant_code = ?, accountant_name = ?, accountant_commission_rate = ?, accountant_commission_amount = ?
+        WHERE id = ?
+      `).run(
+        currentAccountant ? currentAccountant.id : null,
+        accountant_code,
+        accountant_name,
+        accountant_commission_rate,
+        accountant_commission_amount,
+        req.params.id
+      );
+    }
 
     res.json({
       success: true,
       staff_id: currentStaff ? currentStaff.id : null,
       staff_code,
       staff_name,
-      staff_commission_rate
+      staff_commission_rate,
+      salesman_id: currentStaff ? currentStaff.id : null,
+      salesman_code: staff_code,
+      salesman_name: staff_name,
+      salesman_commission_rate: staff_commission_rate,
+      accountant_id: currentAccountant ? currentAccountant.id : null,
+      accountant_code,
+      accountant_name,
+      accountant_commission_rate
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -815,6 +890,14 @@ app.post('/api/transactions', (req, res) => {
       staff_code,
       staff_name,
       staff_commission_rate,
+      salesman_id,
+      salesman_code,
+      salesman_name,
+      salesman_commission_rate,
+      accountant_id,
+      accountant_code,
+      accountant_name,
+      accountant_commission_rate,
       items // Array of items
     } = req.body;
 
@@ -822,8 +905,20 @@ app.post('/api/transactions', (req, res) => {
     const paidAmt = parseFloat(paid_amount) || 0;
     const balanceDue = Math.max(0, totalAmt - paidAmt);
     const status = balanceDue === 0 ? 'Paid' : (paidAmt > 0 ? 'Partial' : 'Unpaid');
-    const commRate = parseFloat(staff_commission_rate) || 0;
-    const commAmt = (totalAmt * commRate) / 100;
+
+    // Salesman attribution
+    const finalSalesmanId = salesman_id ? Number(salesman_id) : (staff_id ? Number(staff_id) : null);
+    const finalSalesmanCode = salesman_code || staff_code || '';
+    const finalSalesmanName = salesman_name || staff_name || '';
+    const finalSalesmanRate = parseFloat(salesman_commission_rate !== undefined ? salesman_commission_rate : staff_commission_rate) || 0;
+    const finalSalesmanAmt = (totalAmt * finalSalesmanRate) / 100;
+
+    // Accountant attribution
+    const finalAccountantId = accountant_id ? Number(accountant_id) : null;
+    const finalAccountantCode = accountant_code || '';
+    const finalAccountantName = accountant_name || '';
+    const finalAccountantRate = parseFloat(accountant_commission_rate) || 0;
+    const finalAccountantAmt = (totalAmt * finalAccountantRate) / 100;
 
     // Auto-generate txn_no if blank
     let generatedNo = txn_no;
@@ -839,8 +934,10 @@ app.post('/api/transactions', (req, res) => {
         txn_no, type, date, party_id, party_name, subtotal, tax_amount, discount, 
         amount, paid_amount, balance_due, payment_type, status, notes,
         party_phone, party_gstin, party_address, party_city, party_state, party_pincode,
-        staff_id, staff_code, staff_name, staff_commission_rate, staff_commission_amount
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        staff_id, staff_code, staff_name, staff_commission_rate, staff_commission_amount,
+        salesman_id, salesman_code, salesman_name, salesman_commission_rate, salesman_commission_amount,
+        accountant_id, accountant_code, accountant_name, accountant_commission_rate, accountant_commission_amount
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = insertTxnStmt.run(
@@ -864,11 +961,24 @@ app.post('/api/transactions', (req, res) => {
       party_city || '',
       party_state || 'Bihar',
       party_pincode || '',
-      staff_id ? Number(staff_id) : null,
-      staff_code || '',
-      staff_name || '',
-      commRate,
-      commAmt
+      // Legacy staff
+      finalSalesmanId,
+      finalSalesmanCode,
+      finalSalesmanName,
+      finalSalesmanRate,
+      finalSalesmanAmt,
+      // Dedicated salesman
+      finalSalesmanId,
+      finalSalesmanCode,
+      finalSalesmanName,
+      finalSalesmanRate,
+      finalSalesmanAmt,
+      // Dedicated accountant
+      finalAccountantId,
+      finalAccountantCode,
+      finalAccountantName,
+      finalAccountantRate,
+      finalAccountantAmt
     );
 
     const transactionId = result.lastInsertRowid;

@@ -115,9 +115,33 @@ function initSqliteDb(sqliteDb) {
     );
   `);
 
-  try {
-    sqliteDb.exec("ALTER TABLE staff ADD COLUMN password TEXT DEFAULT '1234'");
-  } catch (e) {}
+  const newCols = [
+    "ALTER TABLE staff ADD COLUMN password TEXT DEFAULT '1234'",
+    "ALTER TABLE transactions ADD COLUMN party_phone TEXT",
+    "ALTER TABLE transactions ADD COLUMN party_gstin TEXT",
+    "ALTER TABLE transactions ADD COLUMN party_address TEXT",
+    "ALTER TABLE transactions ADD COLUMN party_city TEXT",
+    "ALTER TABLE transactions ADD COLUMN party_state TEXT DEFAULT 'Bihar'",
+    "ALTER TABLE transactions ADD COLUMN party_pincode TEXT",
+    "ALTER TABLE transactions ADD COLUMN staff_id INTEGER",
+    "ALTER TABLE transactions ADD COLUMN staff_code TEXT",
+    "ALTER TABLE transactions ADD COLUMN staff_name TEXT",
+    "ALTER TABLE transactions ADD COLUMN staff_commission_rate REAL DEFAULT 0",
+    "ALTER TABLE transactions ADD COLUMN staff_commission_amount REAL DEFAULT 0",
+    "ALTER TABLE transactions ADD COLUMN salesman_id INTEGER",
+    "ALTER TABLE transactions ADD COLUMN salesman_code TEXT",
+    "ALTER TABLE transactions ADD COLUMN salesman_name TEXT",
+    "ALTER TABLE transactions ADD COLUMN salesman_commission_rate REAL DEFAULT 0",
+    "ALTER TABLE transactions ADD COLUMN salesman_commission_amount REAL DEFAULT 0",
+    "ALTER TABLE transactions ADD COLUMN accountant_id INTEGER",
+    "ALTER TABLE transactions ADD COLUMN accountant_code TEXT",
+    "ALTER TABLE transactions ADD COLUMN accountant_name TEXT",
+    "ALTER TABLE transactions ADD COLUMN accountant_commission_rate REAL DEFAULT 0",
+    "ALTER TABLE transactions ADD COLUMN accountant_commission_amount REAL DEFAULT 0"
+  ];
+  for (const colSql of newCols) {
+    try { sqliteDb.exec(colSql); } catch (e) {}
+  }
 
   const companyCheck = sqliteDb.prepare('SELECT COUNT(*) as count FROM company_settings').get();
   if (companyCheck.count === 0) {
@@ -509,9 +533,17 @@ function createJsonDb() {
               txn_no, type, date, party_id, party_name, subtotal, tax_amount, discount, 
               amount, paid_amount, balance_due, payment_type, status, notes, 
               party_phone, party_gstin, party_address, party_city, party_state, party_pincode,
-              staff_id, staff_code, staff_name, staff_commission_rate, staff_commission_amount
+              staff_id, staff_code, staff_name, staff_commission_rate, staff_commission_amount,
+              salesman_id, salesman_code, salesman_name, salesman_commission_rate, salesman_commission_amount,
+              accountant_id, accountant_code, accountant_name, accountant_commission_rate, accountant_commission_amount
             ] = params;
             const newId = store.transactions.length ? Math.max(...store.transactions.map(t => t.id)) + 1 : 1;
+            const finalSalesmanId = salesman_id ? Number(salesman_id) : (staff_id ? Number(staff_id) : null);
+            const finalSalesmanName = salesman_name || staff_name || '';
+            const finalSalesmanCode = salesman_code || staff_code || '';
+            const finalSalesmanRate = parseFloat(salesman_commission_rate || staff_commission_rate || 0);
+            const finalSalesmanAmt = parseFloat(salesman_commission_amount || staff_commission_amount || 0);
+
             store.transactions.unshift({ 
               id: newId, 
               txn_no, 
@@ -534,24 +566,62 @@ function createJsonDb() {
               party_city: party_city || '',
               party_state: party_state || 'Bihar',
               party_pincode: party_pincode || '',
-              staff_id: staff_id ? Number(staff_id) : null,
-              staff_code: staff_code || '',
-              staff_name: staff_name || '',
-              staff_commission_rate: parseFloat(staff_commission_rate) || 0,
-              staff_commission_amount: parseFloat(staff_commission_amount) || 0
+              // Salesman
+              salesman_id: finalSalesmanId,
+              salesman_code: finalSalesmanCode,
+              salesman_name: finalSalesmanName,
+              salesman_commission_rate: finalSalesmanRate,
+              salesman_commission_amount: finalSalesmanAmt,
+              // Accountant / Billed By
+              accountant_id: accountant_id ? Number(accountant_id) : null,
+              accountant_code: accountant_code || '',
+              accountant_name: accountant_name || '',
+              accountant_commission_rate: parseFloat(accountant_commission_rate || 0),
+              accountant_commission_amount: parseFloat(accountant_commission_amount || 0),
+              // Backward compatibility
+              staff_id: finalSalesmanId,
+              staff_code: finalSalesmanCode,
+              staff_name: finalSalesmanName,
+              staff_commission_rate: finalSalesmanRate,
+              staff_commission_amount: finalSalesmanAmt
             });
             saveStore();
             return { lastInsertRowid: newId };
           }
-          if (cleanSql.includes('UPDATE transactions SET staff_id = ?')) {
-            const [staff_id, staff_code, staff_name, staff_commission_rate, id] = params;
+          if (cleanSql.includes('UPDATE transactions SET staff_id = ?') || cleanSql.includes('UPDATE transactions SET salesman_id = ?')) {
+            const id = params[params.length - 1];
+            const staff_id = params[0];
+            const staff_code = params[1];
+            const staff_name = params[2];
+            const staff_commission_rate = params[3];
             const txn = store.transactions.find(t => t.id === Number(id));
             if (txn) {
-              txn.staff_id = staff_id ? Number(staff_id) : null;
+              const sId = staff_id ? Number(staff_id) : null;
+              txn.staff_id = sId;
               txn.staff_code = staff_code || '';
               txn.staff_name = staff_name || '';
               txn.staff_commission_rate = parseFloat(staff_commission_rate) || 0;
               txn.staff_commission_amount = ((txn.amount || 0) * txn.staff_commission_rate) / 100;
+              // Also update salesman fields
+              txn.salesman_id = sId;
+              txn.salesman_code = staff_code || '';
+              txn.salesman_name = staff_name || '';
+              txn.salesman_commission_rate = txn.staff_commission_rate;
+              txn.salesman_commission_amount = txn.staff_commission_amount;
+              saveStore();
+              return { changes: 1 };
+            }
+            return { changes: 0 };
+          }
+          if (cleanSql.includes('UPDATE transactions SET accountant_id = ?')) {
+            const [acc_id, acc_code, acc_name, acc_commission_rate, id] = params;
+            const txn = store.transactions.find(t => t.id === Number(id));
+            if (txn) {
+              txn.accountant_id = acc_id ? Number(acc_id) : null;
+              txn.accountant_code = acc_code || '';
+              txn.accountant_name = acc_name || '';
+              txn.accountant_commission_rate = parseFloat(acc_commission_rate) || 0;
+              txn.accountant_commission_amount = ((txn.amount || 0) * txn.accountant_commission_rate) / 100;
               saveStore();
               return { changes: 1 };
             }

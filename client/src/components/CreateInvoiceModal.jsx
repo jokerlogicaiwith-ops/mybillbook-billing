@@ -27,9 +27,10 @@ export default function CreateInvoiceModal({
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Staff and Commission state
+  // Staff, Salesman and Accountant Commission state
   const [staffList, setStaffList] = useState([]);
-  const [selectedStaffId, setSelectedStaffId] = useState('');
+  const [selectedSalesmanId, setSelectedSalesmanId] = useState('');
+  const [selectedAccountantId, setSelectedAccountantId] = useState('');
 
   // Barcode Scanner State
   const [barcodeQuery, setBarcodeQuery] = useState('');
@@ -112,10 +113,19 @@ export default function CreateInvoiceModal({
       const res = await fetch('/api/staff');
       const data = await res.json();
       setStaffList(data);
-      if (currentUser && !currentUser.is_admin && currentUser.id) {
-        setSelectedStaffId(String(currentUser.id));
-      } else if (Array.isArray(data) && data.length > 0) {
-        setSelectedStaffId(prev => prev || String(data[0].id));
+      if (Array.isArray(data) && data.length > 0) {
+        if (currentUser && !currentUser.is_admin && currentUser.id) {
+          const isAccountant = (currentUser.role || '').toLowerCase().includes('accountant') || (currentUser.role || '').toLowerCase().includes('c.a.');
+          if (isAccountant) {
+            setSelectedAccountantId(String(currentUser.id));
+            const firstSales = data.find(s => !(s.role || '').toLowerCase().includes('accountant')) || data[0];
+            setSelectedSalesmanId(String(firstSales.id));
+          } else {
+            setSelectedSalesmanId(String(currentUser.id));
+          }
+        } else {
+          setSelectedSalesmanId(prev => prev || String(data[0].id));
+        }
       }
     } catch (err) {
       console.error('Failed to fetch staff', err);
@@ -354,7 +364,13 @@ export default function CreateInvoiceModal({
 
     setIsSubmitting(true);
     try {
-      const currentStaff = staffList.find(s => s.id === parseInt(selectedStaffId));
+      const currentSalesman = staffList.find(s => s.id === parseInt(selectedSalesmanId));
+      let currentAccountant = null;
+      if (currentUser && !currentUser.is_admin && currentUser.id) {
+        currentAccountant = currentUser;
+      } else if (selectedAccountantId) {
+        currentAccountant = staffList.find(s => s.id === parseInt(selectedAccountantId));
+      }
 
       const payload = {
         txn_no: txnNo,
@@ -368,10 +384,21 @@ export default function CreateInvoiceModal({
         party_city: partyCity,
         party_state: partyState,
         party_pincode: partyPincode,
-        staff_id: currentStaff ? currentStaff.id : null,
-        staff_code: currentStaff ? currentStaff.staff_code : null,
-        staff_name: currentStaff ? currentStaff.name : null,
-        staff_commission_rate: currentStaff ? (parseFloat(currentStaff.commission_rate) || 0) : 0,
+        // Salesman
+        salesman_id: currentSalesman ? currentSalesman.id : null,
+        salesman_code: currentSalesman ? currentSalesman.staff_code : null,
+        salesman_name: currentSalesman ? currentSalesman.name : null,
+        salesman_commission_rate: currentSalesman ? (parseFloat(currentSalesman.commission_rate) || 0) : 0,
+        // Accountant / Biller
+        accountant_id: currentAccountant ? currentAccountant.id : null,
+        accountant_code: currentAccountant ? currentAccountant.staff_code : null,
+        accountant_name: currentAccountant ? currentAccountant.name : null,
+        accountant_commission_rate: currentAccountant ? (parseFloat(currentAccountant.commission_rate) || 0) : 0,
+        // Legacy staff (points to Salesman)
+        staff_id: currentSalesman ? currentSalesman.id : null,
+        staff_code: currentSalesman ? currentSalesman.staff_code : null,
+        staff_name: currentSalesman ? currentSalesman.name : null,
+        staff_commission_rate: currentSalesman ? (parseFloat(currentSalesman.commission_rate) || 0) : 0,
         subtotal: subtotal,
         discount: totalDiscount,
         tax_amount: totalTax,
@@ -532,42 +559,65 @@ export default function CreateInvoiceModal({
                   />
                 </div>
 
+                {/* 1. SALESMAN SELECTION (Always available for billing) */}
+                <div className="mt-2.5 p-2 bg-blue-50/80 border border-blue-300 rounded-lg">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-blue-950 flex items-center space-x-1">
+                      <span>👤 Salesman / Sales Person (सेल्समैन का नाम) *</span>
+                    </label>
+                    {selectedSalesmanId && (
+                      <span className="text-[10px] font-extrabold bg-blue-200 text-blue-900 px-2 py-0.5 rounded-full">
+                        {staffList.find(s => s.id === parseInt(selectedSalesmanId))?.commission_rate || 0}% Comm.
+                      </span>
+                    )}
+                  </div>
+                  <select
+                    value={selectedSalesmanId}
+                    onChange={(e) => setSelectedSalesmanId(e.target.value)}
+                    className="w-full text-xs font-bold border border-blue-400 rounded-md p-2 bg-white text-slate-900 focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                    required
+                  >
+                    <option value="">-- Select Salesman (सेल्समैन चुनें) --</option>
+                    {staffList.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.staff_code} • {s.role}) — {s.commission_rate}% Comm.
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 2. BILLED BY / ACCOUNTANT */}
                 {currentUser && !currentUser.is_admin && currentUser.id ? (
-                  <div className="mt-2.5 p-2.5 bg-indigo-50 border border-indigo-200 rounded-lg">
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold text-indigo-900 flex items-center space-x-1.5">
-                        <span>👤 Billed By (Logged In Staff):</span>
-                      </label>
-                      <span className="text-[10px] font-bold bg-indigo-200 text-indigo-900 px-2 py-0.5 rounded-full">
+                  <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-[11px] font-bold text-emerald-900">
+                        📝 Billed By (बिल बनाने वाला):
+                      </span>
+                      <span className="text-[10px] font-semibold bg-emerald-200 text-emerald-900 px-1.5 py-0.2 rounded-full">
                         {currentUser.role}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-xs font-bold text-indigo-950 bg-white p-2 rounded border border-indigo-200 shadow-2xs">
+                    <div className="flex items-center justify-between text-xs font-bold text-emerald-950 bg-white p-1.5 rounded border border-emerald-200">
                       <span>{currentUser.name} ({currentUser.staff_code})</span>
                       <span className="text-emerald-700 font-extrabold">{currentUser.commission_rate}% Comm.</span>
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-2.5 p-2 bg-blue-50/70 border border-blue-200 rounded-lg">
+                  <div className="mt-2 p-2 bg-slate-50 border border-slate-200 rounded-lg">
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold text-blue-900 flex items-center space-x-1">
-                        <span>👤 Sales Staff / Accountant:</span>
-                      </label>
-                      {selectedStaffId && (
-                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
-                          {staffList.find(s => s.id === parseInt(selectedStaffId))?.commission_rate || 0}% Comm.
-                        </span>
-                      )}
+                      <span className="text-[11px] font-bold text-slate-700">
+                        📝 Billed By / Operator:
+                      </span>
                     </div>
                     <select
-                      value={selectedStaffId}
-                      onChange={(e) => setSelectedStaffId(e.target.value)}
-                      className="w-full text-xs font-bold border border-blue-300 rounded-md p-2 bg-white text-slate-900 focus:ring-2 focus:ring-blue-500"
+                      value={selectedAccountantId}
+                      onChange={(e) => setSelectedAccountantId(e.target.value)}
+                      className="w-full text-xs font-medium border border-slate-300 rounded p-1.5 bg-white text-slate-800"
                     >
-                      <option value="">-- No Staff (Store Admin ADM-001) --</option>
+                      <option value="">Store Admin (ADM-001)</option>
                       {staffList.map(s => (
                         <option key={s.id} value={s.id}>
-                          {s.name} ({s.staff_code} • {s.role}) — {s.commission_rate}% Comm.
+                          {s.name} ({s.staff_code} • {s.role})
                         </option>
                       ))}
                     </select>
@@ -911,10 +961,17 @@ export default function CreateInvoiceModal({
                 <span className="font-semibold text-blue-600">+ ₹{totalTax.toLocaleString('en-IN')}</span>
               </div>
 
-              {selectedStaffId && staffList.find(s => s.id === parseInt(selectedStaffId)) && (
-                <div className="flex justify-between text-emerald-700 bg-emerald-50 px-2 py-1 rounded text-[11px] font-semibold border border-emerald-200">
-                  <span>Staff Comm. ({staffList.find(s => s.id === parseInt(selectedStaffId))?.commission_rate}%):</span>
-                  <span>₹{Math.round((grandTotal * (parseFloat(staffList.find(s => s.id === parseInt(selectedStaffId))?.commission_rate || 0))) / 100).toLocaleString('en-IN')}</span>
+              {selectedSalesmanId && staffList.find(s => s.id === parseInt(selectedSalesmanId)) && (
+                <div className="flex justify-between text-blue-800 bg-blue-50 px-2 py-1 rounded text-[11px] font-semibold border border-blue-200">
+                  <span>Salesman Comm. ({staffList.find(s => s.id === parseInt(selectedSalesmanId))?.name} • {staffList.find(s => s.id === parseInt(selectedSalesmanId))?.commission_rate}%):</span>
+                  <span>₹{Math.round((grandTotal * (parseFloat(staffList.find(s => s.id === parseInt(selectedSalesmanId))?.commission_rate || 0))) / 100).toLocaleString('en-IN')}</span>
+                </div>
+              )}
+
+              {((currentUser && !currentUser.is_admin && currentUser.role?.toLowerCase().includes('accountant')) || selectedAccountantId) && (
+                <div className="flex justify-between text-emerald-800 bg-emerald-50 px-2 py-1 rounded text-[11px] font-semibold border border-emerald-200">
+                  <span>Accountant Comm. ({currentUser?.name || staffList.find(s => s.id === parseInt(selectedAccountantId))?.name} • {currentUser?.commission_rate || staffList.find(s => s.id === parseInt(selectedAccountantId))?.commission_rate || 0}%):</span>
+                  <span>₹{Math.round((grandTotal * (parseFloat(currentUser?.commission_rate || staffList.find(s => s.id === parseInt(selectedAccountantId))?.commission_rate || 0))) / 100).toLocaleString('en-IN')}</span>
                 </div>
               )}
 

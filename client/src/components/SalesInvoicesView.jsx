@@ -183,8 +183,9 @@ export default function SalesInvoicesView({
       const q = search.toLowerCase();
       const matchNo = (t.txn_no || '').toLowerCase().includes(q) || (t.display_txn_no || '').toLowerCase().includes(q);
       const matchParty = (t.party_name || '').toLowerCase().includes(q);
+      const matchSalesman = (t.salesman_name || t.staff_name || '').toLowerCase().includes(q) || (t.salesman_code || t.staff_code || '').toLowerCase().includes(q);
       const matchAmount = String(t.amount || '').includes(q);
-      if (!matchNo && !matchParty && !matchAmount) return false;
+      if (!matchNo && !matchParty && !matchSalesman && !matchAmount) return false;
     }
     return true;
   }).sort((a, b) => {
@@ -510,6 +511,7 @@ export default function SalesInvoicesView({
                    subTab === 'proforma' ? 'Proforma Number' : 'Invoice Number'}
                 </th>
                 <th className="py-3 px-3.5 whitespace-nowrap">Party Name</th>
+                <th className="py-3 px-3.5 whitespace-nowrap">Salesman</th>
                 <th className="py-3 px-3.5 whitespace-nowrap">
                   {subTab === 'quotation' || subTab === 'proforma' ? 'Valid Till' :
                    subTab === 'payment-in' ? 'Payment Mode' :
@@ -531,7 +533,7 @@ export default function SalesInvoicesView({
             <tbody className="divide-y divide-slate-100 font-medium">
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-400">
+                  <td colSpan={9} className="py-12 text-center text-slate-400">
                     <FileText className="w-8 h-8 mx-auto text-slate-300 mb-2" />
                     <p className="font-semibold text-slate-600">No {getSubTabHeading()} Found</p>
                     <p className="text-xs text-slate-400 mt-1">Click "{getCreateButtonText()}" to add your first record</p>
@@ -576,6 +578,18 @@ export default function SalesInvoicesView({
                       {/* Party Name */}
                       <td className="py-3.5 px-3.5 text-slate-900 font-semibold whitespace-nowrap uppercase tracking-tight">
                         {txn.party_name}
+                      </td>
+
+                      {/* Salesman */}
+                      <td className="py-3.5 px-3.5 whitespace-nowrap">
+                        <div className="font-semibold text-slate-800 text-xs">
+                          {txn.salesman_name || txn.staff_name || 'Direct / Store'}
+                        </div>
+                        {(txn.salesman_code || txn.staff_code) && (
+                          <span className="text-[10px] font-mono font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded">
+                            {txn.salesman_code || txn.staff_code}
+                          </span>
+                        )}
                       </td>
 
                       {/* Due In / Valid Till / Mode */}
