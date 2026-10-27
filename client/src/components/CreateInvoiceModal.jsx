@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Plus, Trash2, Calculator, Check, ArrowRight, ScanLine, AlertTriangle, Sparkles, MapPin } from 'lucide-react';
+import { X, Plus, Trash2, Calculator, Check, ArrowRight, ArrowLeft, ScanLine, AlertTriangle, Sparkles, MapPin } from 'lucide-react';
 
 export default function CreateInvoiceModal({ 
   isOpen, 
@@ -434,54 +434,94 @@ export default function CreateInvoiceModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        
-        {/* Modal Header */}
-        <div className="p-4 px-6 bg-slate-900 text-white flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <span className="text-sm font-bold uppercase tracking-wider text-blue-400">
-              New Transaction
-            </span>
-            <div className="flex flex-wrap gap-1 bg-slate-800 p-0.5 rounded-lg text-xs font-semibold">
-              {(['Purchase Invoices', 'Purchase Bills', 'Payment Out', 'Purchase Return', 'Debit Note', 'Purchase Orders'].includes(txnType)
-                ? [
-                    'Purchase Invoices',
-                    'Payment Out',
-                    'Purchase Return',
-                    'Debit Note',
-                    'Purchase Orders'
-                  ]
-                : [
-                    'Sales Invoices', 
-                    'Quotation / Estimate', 
-                    'Payment In', 
-                    'Sales Return', 
-                    'Credit Note', 
-                    'Delivery Challan', 
-                    'Proforma Invoice'
-                  ]
-              ).map(t => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => { setTxnType(t); generateSuggestedTxnNo(t); }}
-                  className={`px-2.5 py-1 rounded-md transition text-[11px] ${
-                    txnType === t || (t === 'Purchase Invoices' && txnType === 'Purchase Bills') ? 'bg-indigo-600 text-white shadow-xs font-bold' : 'text-slate-300 hover:text-white'
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
+    <div className="fixed inset-0 z-50 bg-[#f8fafc] flex flex-col h-screen w-screen overflow-hidden animate-in fade-in duration-150">
+      
+      {/* Full-Page Workstation Header matching MyBillBook */}
+      <div className="px-6 py-3.5 bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 shadow-md border-b border-slate-800">
+        <div className="flex items-center space-x-3 overflow-x-auto">
+          {/* Back Button */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition flex items-center space-x-1.5 shrink-0"
+            title="Back to Dashboard (वापस जाएं)"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-xs font-bold hidden sm:inline">Back</span>
+          </button>
+
+          <div className="h-5 w-px bg-slate-700 hidden sm:block shrink-0"></div>
+
+          <span className="text-sm font-black uppercase tracking-wider text-blue-400 shrink-0">
+            {txnType}
+          </span>
+
+          {/* Transaction Type Tabs */}
+          <div className="flex flex-wrap gap-1 bg-slate-800/90 p-0.5 rounded-lg text-xs font-semibold shrink-0">
+            {(['Purchase Invoices', 'Purchase Bills', 'Payment Out', 'Purchase Return', 'Debit Note', 'Purchase Orders'].includes(txnType)
+              ? [
+                  'Purchase Invoices',
+                  'Payment Out',
+                  'Purchase Return',
+                  'Debit Note',
+                  'Purchase Orders'
+                ]
+              : [
+                  'Sales Invoices', 
+                  'Quotation / Estimate', 
+                  'Payment In', 
+                  'Sales Return', 
+                  'Credit Note', 
+                  'Delivery Challan', 
+                  'Proforma Invoice'
+                ]
+            ).map(t => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => { setTxnType(t); generateSuggestedTxnNo(t); }}
+                className={`px-2.5 py-1 rounded-md transition text-[11px] ${
+                  txnType === t || (t === 'Purchase Invoices' && txnType === 'Purchase Bills') 
+                    ? 'bg-indigo-600 text-white shadow-xs font-bold' 
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
           </div>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-white rounded-lg">
+        </div>
+
+        {/* Right Action Buttons */}
+        <div className="flex items-center space-x-2 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 border border-slate-700 hover:bg-slate-800 text-slate-200 text-xs font-bold rounded-lg transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition shadow-sm flex items-center space-x-1.5 disabled:opacity-50"
+          >
+            <Check className="w-4 h-4 stroke-[2.5]" />
+            <span>{isSubmitting ? 'Saving...' : 'Save & Generate Invoice'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
+      </div>
 
-        {/* Modal Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+      {/* Full Page Form Body */}
+      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-6 max-w-7xl mx-auto w-full space-y-6">
           
           {/* Party, Date and MyBillBook Billing Address Section */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
@@ -1022,7 +1062,6 @@ export default function CreateInvoiceModal({
             </button>
           </div>
         </form>
-      </div>
     </div>
   );
 }

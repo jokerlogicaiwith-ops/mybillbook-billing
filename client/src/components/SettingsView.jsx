@@ -249,11 +249,10 @@ export default function SettingsView({
                         {isActive && <Check className="w-3.5 h-3.5 text-blue-600" />}
                         <button
                           type="button"
-                          title="Edit Business Name (नाम बदलें)"
+                          title="Edit Business Name & Settings (पूरा फॉर्म भरें)"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setCompanyToEdit(c);
-                            setIsEditModalOpen(true);
+                            handleSwitchCompany(c.id);
                             setCompanySwitcherOpen(false);
                           }}
                           className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-md transition cursor-pointer"

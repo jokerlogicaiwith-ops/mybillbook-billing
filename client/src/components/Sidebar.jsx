@@ -188,11 +188,11 @@ export default function Sidebar({
                       {isActive && <Check className="w-3.5 h-3.5 text-blue-600" />}
                       <button
                         type="button"
-                        title="Edit Business Name & Details (नाम बदलें)"
+                        title="Edit Business Name & Settings (पूरा सेटिंग्स पेज खोलें)"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setCompanyToEdit(c);
-                          setIsEditBusinessModalOpen(true);
+                          handleSwitchCompany(c.id);
+                          setActiveTab('settings');
                           setCompanyDropdownOpen(false);
                         }}
                         className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-md transition cursor-pointer"
