@@ -6,7 +6,7 @@
       "phone": "8936863035",
       "email": "vsrmcomputerclasses@gmail.com",
       "gstin": "10ABFCA4659J1ZQ",
-      "is_gst_registered": true,
+      "is_gst_registered": 1,
       "address": "Near Kashipur Chowk Samastipur 848101",
       "billing_address": "Near Kashipur Chowk Samastipur 848101",
       "city": "SAMASTIPUR",
@@ -19,7 +19,9 @@
       "upi_id": "8936863035@upi",
       "tagline": "Professional Computer & IT Training Institute",
       "terms": "1. Fees / Goods once sold will not be taken back.\n2. Invoices are subject to Samastipur jurisdiction.",
-      "is_active": 1
+      "is_active": 1,
+      "logo_url": "",
+      "signature_url": ""
     },
     {
       "id": 2,
