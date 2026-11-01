@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Printer, Share2, FileText, Receipt, CheckCircle2, ChevronRight, Settings2, Copy, Layers, Check } from 'lucide-react';
+import { X, Printer, Share2, FileText, Receipt, CheckCircle2, ChevronRight, Settings2, Copy, Layers, Check, Truck, RefreshCw } from 'lucide-react';
 
 /**
  * Converts numbers into standard Indian Currency Words format
@@ -54,6 +54,7 @@ const COPY_TYPES = [
   { id: 'original', label: 'Original for Recipient', title: 'Original for Recipient', docType: 'tax_invoice', defaultChecked: true },
   { id: 'duplicate', label: 'Duplicate for Transporter', title: 'Duplicate for Transporter', docType: 'tax_invoice', defaultChecked: true },
   { id: 'triplicate', label: 'Triplicate for Supplier', title: 'Triplicate for Supplier', docType: 'tax_invoice', defaultChecked: true },
+  { id: 'eway', label: 'E-Way Bill', title: 'e-Way Bill (Government of India)', docType: 'eway_bill', defaultChecked: false },
   { id: 'delivery', label: 'Delivery Note', title: 'DELIVERY NOTE', docType: 'delivery_note', defaultChecked: false },
   { id: 'packing', label: 'Packing Slip', title: 'PACKING SLIP', docType: 'packing_slip', defaultChecked: false }
 ];
@@ -71,15 +72,94 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
   const [localAccountantName, setLocalAccountantName] = useState('');
   const [localAccountantCode, setLocalAccountantCode] = useState('');
 
-  // Multi-copy state (Original, Duplicate, Triplicate, Delivery Note, Packing Slip)
+  // Multi-copy state (Original, Duplicate, Triplicate, E-Way Bill, Delivery Note, Packing Slip)
   const [copiesConfig, setCopiesConfig] = useState({
     original: true,
     duplicate: true,
     triplicate: true,
+    eway: false,
     delivery: false,
     packing: false
   });
   const [previewTab, setPreviewTab] = useState('all'); // 'all' or copyId
+
+  // E-Way Bill Inline Modal / Quick Generator State
+  const [isEwayModalOpen, setIsEwayModalOpen] = useState(false);
+  const [ewayForm, setEwayForm] = useState({
+    eway_bill_no: '',
+    vehicle_no: '',
+    transporter_name: '',
+    transporter_id: '',
+    transporter_doc_no: '',
+    transport_mode: 'Road',
+    approx_distance: 85,
+    supply_type: 'Outward',
+    sub_type: 'Supply'
+  });
+  const [isSavingEway, setIsSavingEway] = useState(false);
+
+  const generateEwayBillNo = () => {
+    const part1 = Math.floor(1000 + Math.random() * 9000);
+    const part2 = Math.floor(1000 + Math.random() * 9000);
+    return `2410 ${part1} ${part2}`;
+  };
+
+  const openEwayModal = () => {
+    if (!invoice) return;
+    setEwayForm({
+      eway_bill_no: invoice.eway_bill_no || generateEwayBillNo(),
+      vehicle_no: invoice.vehicle_no || '',
+      transporter_name: invoice.transporter_name || '',
+      transporter_id: invoice.transporter_id || '',
+      transporter_doc_no: invoice.transporter_doc_no || '',
+      transport_mode: invoice.transport_mode || 'Road',
+      approx_distance: invoice.approx_distance || 85,
+      supply_type: invoice.supply_type || 'Outward',
+      sub_type: invoice.sub_type || 'Supply'
+    });
+    setIsEwayModalOpen(true);
+  };
+
+  const saveEwayBill = async (e) => {
+    if (e) e.preventDefault();
+    if (!invoice) return;
+    setIsSavingEway(true);
+    try {
+      const ewayNumber = ewayForm.eway_bill_no.trim() || generateEwayBillNo();
+      const payload = {
+        ...ewayForm,
+        eway_bill_no: ewayNumber,
+        eway_bill_date: `${invoice.date} 10:45 AM`,
+        eway_valid_until: (() => {
+          const d = new Date(invoice.date || new Date());
+          const dist = parseFloat(ewayForm.approx_distance) || 85;
+          const days = Math.max(1, Math.ceil(dist / 200));
+          d.setDate(d.getDate() + days);
+          return `${d.toISOString().split('T')[0]} 11:59 PM`;
+        })()
+      };
+
+      const res = await fetch(`/api/transactions/${invoice.id || txnId}/eway`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        setInvoice(prev => ({ ...prev, ...payload }));
+        setCopiesConfig(prev => ({ ...prev, eway: true }));
+        setPreviewTab('eway');
+        setIsEwayModalOpen(false);
+      } else {
+        alert(data.error || 'Failed to save E-Way Bill');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error updating E-Way Bill');
+    } finally {
+      setIsSavingEway(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen && txnId) {
@@ -111,6 +191,10 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
 
       setLocalAccountantName(data.accountant_name || '');
       setLocalAccountantCode(data.accountant_code || '');
+
+      if (data.eway_bill_no) {
+        setCopiesConfig(prev => ({ ...prev, eway: true }));
+      }
 
       // Generate UPI QR Code if balance due > 0 or total amount
       const upiId = data.company?.upi_id || '8130140936@upi';
@@ -309,6 +393,30 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
               </>
             )}
 
+            {/* E-Way Bill Quick Action in Toolbar */}
+            {invoice?.eway_bill_no ? (
+              <button
+                type="button"
+                onClick={openEwayModal}
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-xs"
+                title="View / Edit E-Way Bill Details"
+              >
+                <Truck className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">E-Way:</span>
+                <span>{invoice.eway_bill_no}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={openEwayModal}
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-700 hover:bg-emerald-600 text-white transition shadow-xs border border-emerald-500"
+                title="Generate E-Way Bill for this invoice"
+              >
+                <Truck className="w-3.5 h-3.5" />
+                <span>+ Generate E-Way Bill</span>
+              </button>
+            )}
+
             {/* Direct Print A4 Button */}
             <button
               onClick={() => executePrint('a4')}
@@ -326,7 +434,7 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
             {/* Direct Print POS Button */}
             <button
               onClick={() => executePrint('pos')}
-              className={`inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-xs ${
+              className={`inline-flex items-center space-x-1 px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow-xs ${
                 printFormat === 'pos'
                   ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold'
                   : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700'
@@ -381,11 +489,11 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
                 <button
                   type="button"
                   onClick={() => {
-                    setCopiesConfig({ original: true, duplicate: false, triplicate: false, delivery: false, packing: false });
+                    setCopiesConfig({ original: true, duplicate: false, triplicate: false, eway: false, delivery: false, packing: false });
                     setPreviewTab('all');
                   }}
                   className={`px-2 py-0.5 rounded text-[11px] font-bold border transition ${
-                    copiesConfig.original && !copiesConfig.duplicate && !copiesConfig.triplicate && !copiesConfig.delivery && !copiesConfig.packing
+                    copiesConfig.original && !copiesConfig.duplicate && !copiesConfig.triplicate && !copiesConfig.eway && !copiesConfig.delivery && !copiesConfig.packing
                       ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
                       : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                   }`}
@@ -395,11 +503,11 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
                 <button
                   type="button"
                   onClick={() => {
-                    setCopiesConfig({ original: true, duplicate: true, triplicate: false, delivery: false, packing: false });
+                    setCopiesConfig({ original: true, duplicate: true, triplicate: false, eway: false, delivery: false, packing: false });
                     setPreviewTab('all');
                   }}
                   className={`px-2 py-0.5 rounded text-[11px] font-bold border transition ${
-                    copiesConfig.original && copiesConfig.duplicate && !copiesConfig.triplicate && !copiesConfig.delivery && !copiesConfig.packing
+                    copiesConfig.original && copiesConfig.duplicate && !copiesConfig.triplicate && !copiesConfig.eway && !copiesConfig.delivery && !copiesConfig.packing
                       ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
                       : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                   }`}
@@ -409,11 +517,11 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
                 <button
                   type="button"
                   onClick={() => {
-                    setCopiesConfig({ original: true, duplicate: true, triplicate: true, delivery: false, packing: false });
+                    setCopiesConfig({ original: true, duplicate: true, triplicate: true, eway: false, delivery: false, packing: false });
                     setPreviewTab('all');
                   }}
                   className={`px-2 py-0.5 rounded text-[11px] font-bold border transition ${
-                    copiesConfig.original && copiesConfig.duplicate && copiesConfig.triplicate && !copiesConfig.delivery && !copiesConfig.packing
+                    copiesConfig.original && copiesConfig.duplicate && copiesConfig.triplicate && !copiesConfig.eway && !copiesConfig.delivery && !copiesConfig.packing
                       ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
                       : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                   }`}
@@ -424,17 +532,36 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
                 <button
                   type="button"
                   onClick={() => {
-                    setCopiesConfig({ original: true, duplicate: true, triplicate: true, delivery: true, packing: true });
+                    if (!invoice?.eway_bill_no) {
+                      openEwayModal();
+                    } else {
+                      setCopiesConfig({ original: true, duplicate: true, triplicate: true, eway: true, delivery: false, packing: false });
+                      setPreviewTab('all');
+                    }
+                  }}
+                  className={`px-2 py-0.5 rounded text-[11px] font-bold border transition ${
+                    copiesConfig.original && copiesConfig.duplicate && copiesConfig.triplicate && copiesConfig.eway && !copiesConfig.delivery && !copiesConfig.packing
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                      : 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50'
+                  }`}
+                  title="3 GST Invoices + Official E-Way Bill"
+                >
+                  4 Copies (+ E-Way Bill)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCopiesConfig({ original: true, duplicate: true, triplicate: true, eway: true, delivery: true, packing: true });
                     setPreviewTab('all');
                   }}
                   className={`px-2 py-0.5 rounded text-[11px] font-bold border transition ${
-                    copiesConfig.original && copiesConfig.duplicate && copiesConfig.triplicate && copiesConfig.delivery && copiesConfig.packing
+                    copiesConfig.original && copiesConfig.duplicate && copiesConfig.triplicate && copiesConfig.eway && copiesConfig.delivery && copiesConfig.packing
                       ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
                       : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                   }`}
-                  title="All 5 Documents: 3 GST Invoices + Delivery Note + Packing Slip"
+                  title="All Documents: 3 GST Invoices + E-Way Bill + Delivery Note + Packing Slip"
                 >
-                  All 5 Docs
+                  All Docs (+ E-Way)
                 </button>
               </div>
             </div>
@@ -447,15 +574,26 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
                     type="checkbox"
                     checked={Boolean(copiesConfig[c.id])}
                     onChange={(e) => {
+                      if (c.id === 'eway' && e.target.checked && !invoice?.eway_bill_no) {
+                        openEwayModal();
+                        return;
+                      }
                       const next = { ...copiesConfig, [c.id]: e.target.checked };
-                      // At least one must be checked
                       if (Object.values(next).some(Boolean)) {
                         setCopiesConfig(next);
                       }
                     }}
                     className="rounded text-blue-600 focus:ring-blue-500 w-3.5 h-3.5 cursor-pointer"
                   />
-                  <span className={c.docType === 'delivery_note' ? 'text-indigo-900 font-bold' : c.docType === 'packing_slip' ? 'text-teal-900 font-bold' : ''}>
+                  <span className={
+                    c.docType === 'eway_bill' 
+                      ? 'text-emerald-800 font-extrabold bg-emerald-100/90 px-1.5 py-0.2 rounded border border-emerald-300' 
+                      : c.docType === 'delivery_note' 
+                      ? 'text-indigo-900 font-bold' 
+                      : c.docType === 'packing_slip' 
+                      ? 'text-teal-900 font-bold' 
+                      : ''
+                  }>
                     {c.label}
                   </span>
                 </label>
@@ -484,7 +622,9 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
                   type="button"
                   onClick={() => setPreviewTab(c.id)}
                   className={`px-2 py-0.5 rounded font-bold transition ${
-                    previewTab === c.id ? 'bg-blue-600 text-white shadow-2xs' : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-300'
+                    previewTab === c.id 
+                      ? (c.docType === 'eway_bill' ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-blue-600 text-white shadow-2xs')
+                      : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-300'
                   }`}
                 >
                   Page {i + 1}: {c.label.split(' ')[0]}
@@ -513,21 +653,31 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
                   <div key={copyItem.id} className="relative bg-white shadow-xl rounded-sm border border-slate-400 transition-all">
                     {/* Screen Page Badge */}
                     <div className="bg-slate-800 text-white text-[10px] font-bold px-3 py-1 flex items-center justify-between border-b border-slate-700 print:hidden">
-                      <span>📄 Copy {idx + 1} of {activeCopies.length}: <span className="text-blue-300 uppercase">{copyItem.label}</span></span>
-                      <span className="text-slate-400 font-mono">MyBillBook Standard GST Layout</span>
+                      <span>📄 Copy {idx + 1} of {activeCopies.length}: <span className={copyItem.docType === 'eway_bill' ? 'text-emerald-400 uppercase font-black' : 'text-blue-300 uppercase'}>{copyItem.label}</span></span>
+                      <span className="text-slate-400 font-mono">
+                        {copyItem.docType === 'eway_bill' ? 'Official GST e-Way Bill Format' : 'MyBillBook Standard GST Layout'}
+                      </span>
                     </div>
 
-                    <A4GSTInvoiceLayout 
-                      invoice={invoice} 
-                      copyId={copyItem.id}
-                      copyType={copyItem.docType}
-                      copyTitle={copyItem.title}
-                      salesmanName={localSalesmanName || invoice.salesman_name || invoice.staff_name} 
-                      salesmanCode={localSalesmanCode || invoice.salesman_code || invoice.staff_code}
-                      accountantName={localAccountantName || invoice.accountant_name}
-                      accountantCode={localAccountantCode || invoice.accountant_code}
-                      qrCodeUrl={qrCodeUrl}
-                    />
+                    {copyItem.docType === 'eway_bill' ? (
+                      <EWayBillA4Layout 
+                        invoice={invoice} 
+                        qrCodeUrl={qrCodeUrl}
+                        isPrintView={false} 
+                      />
+                    ) : (
+                      <A4GSTInvoiceLayout 
+                        invoice={invoice} 
+                        copyId={copyItem.id}
+                        copyType={copyItem.docType}
+                        copyTitle={copyItem.title}
+                        salesmanName={localSalesmanName || invoice.salesman_name || invoice.staff_name} 
+                        salesmanCode={localSalesmanCode || invoice.salesman_code || invoice.staff_code}
+                        accountantName={localAccountantName || invoice.accountant_name}
+                        accountantCode={localAccountantCode || invoice.accountant_code}
+                        qrCodeUrl={qrCodeUrl}
+                      />
+                    )}
                   </div>
                 ))}
             </div>
@@ -552,6 +702,155 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
           )}
         </div>
 
+        {/* Inline E-Way Bill Generator / Edit Modal */}
+        {isEwayModalOpen && (
+          <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-2xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white">
+                    <Truck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold">
+                      {invoice?.eway_bill_no ? 'Edit E-Way Bill (ई-वे बिल एडिट करें)' : 'Generate E-Way Bill (ई-वे बिल बनाएं)'}
+                    </h3>
+                    <p className="text-[11px] text-slate-400 font-mono">Invoice: {invoice?.txn_no}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEwayModalOpen(false)}
+                  className="p-1 text-slate-400 hover:text-white rounded-lg transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={saveEwayBill} className="p-5 space-y-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-bold text-slate-800">E-Way Bill Number *</label>
+                      <button
+                        type="button"
+                        onClick={() => setEwayForm(prev => ({ ...prev, eway_bill_no: generateEwayBillNo() }))}
+                        className="text-[10px] text-emerald-700 hover:text-emerald-900 flex items-center space-x-0.5"
+                      >
+                        <RefreshCw className="w-2.5 h-2.5" />
+                        <span>Regen</span>
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={ewayForm.eway_bill_no}
+                      onChange={(e) => setEwayForm({ ...ewayForm, eway_bill_no: e.target.value })}
+                      placeholder="2410 8923 7192"
+                      className="w-full font-mono font-bold text-emerald-950 border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-emerald-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-800 mb-1 block">Vehicle No. (गाड़ी नंबर) *</label>
+                    <input
+                      type="text"
+                      value={ewayForm.vehicle_no}
+                      onChange={(e) => setEwayForm({ ...ewayForm, vehicle_no: e.target.value.toUpperCase() })}
+                      placeholder="e.g. BR-06-GB-4592"
+                      className="w-full font-mono font-bold uppercase border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-emerald-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-800 mb-1 block">Approx Distance (KM) *</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={ewayForm.approx_distance}
+                      onChange={(e) => setEwayForm({ ...ewayForm, approx_distance: e.target.value })}
+                      placeholder="85"
+                      className="w-full font-bold border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-emerald-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-800 mb-1 block">Transport Mode</label>
+                    <select
+                      value={ewayForm.transport_mode}
+                      onChange={(e) => setEwayForm({ ...ewayForm, transport_mode: e.target.value })}
+                      className="w-full border border-slate-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="Road">1. Road (सड़क)</option>
+                      <option value="Rail">2. Rail (रेल)</option>
+                      <option value="Air">3. Air (हवाई)</option>
+                      <option value="Ship">4. Ship (जल)</option>
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="font-bold text-slate-800 mb-1 block">Transporter Name</label>
+                    <input
+                      type="text"
+                      value={ewayForm.transporter_name}
+                      onChange={(e) => setEwayForm({ ...ewayForm, transporter_name: e.target.value })}
+                      placeholder="e.g. VRL Logistics / SafeXpress / Self"
+                      className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-800 mb-1 block">Transporter ID / GSTIN</label>
+                    <input
+                      type="text"
+                      value={ewayForm.transporter_id}
+                      onChange={(e) => setEwayForm({ ...ewayForm, transporter_id: e.target.value.toUpperCase() })}
+                      placeholder="10AAACB1234A1Z1"
+                      className="w-full font-mono uppercase border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-800 mb-1 block">LR / Transporter Doc No.</label>
+                    <input
+                      type="text"
+                      value={ewayForm.transporter_doc_no}
+                      onChange={(e) => setEwayForm({ ...ewayForm, transporter_doc_no: e.target.value })}
+                      placeholder="LR-88214"
+                      className="w-full font-mono border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-[11px] text-emerald-900 font-medium flex items-center space-x-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>E-Way Bill will be saved directly and added as an official print copy immediately.</span>
+                </div>
+
+                <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setIsEwayModalOpen(false)}
+                    className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-bold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingEway}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition shadow-xs font-bold disabled:opacity-50 flex items-center space-x-1.5"
+                  >
+                    <Truck className="w-3.5 h-3.5" />
+                    <span>{isSavingEway ? 'Generating...' : 'Save & Generate E-Way Bill'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
       </div>
 
       {/* React Portal: Injects clean printable layout into #print-root (isolated from interactive app) */}
@@ -567,18 +866,26 @@ export default function InvoicePrintModal({ isOpen, onClose, txnId }) {
                   breakAfter: idx < activeCopies.length - 1 ? 'page' : 'auto'
                 }}
               >
-                <A4GSTInvoiceLayout 
-                  invoice={invoice} 
-                  copyId={copyItem.id}
-                  copyType={copyItem.docType}
-                  copyTitle={copyItem.title}
-                  salesmanName={localSalesmanName || invoice.salesman_name || invoice.staff_name} 
-                  salesmanCode={localSalesmanCode || invoice.salesman_code || invoice.staff_code}
-                  accountantName={localAccountantName || invoice.accountant_name}
-                  accountantCode={localAccountantCode || invoice.accountant_code}
-                  qrCodeUrl={qrCodeUrl}
-                  isPrintView
-                />
+                {copyItem.docType === 'eway_bill' ? (
+                  <EWayBillA4Layout 
+                    invoice={invoice} 
+                    qrCodeUrl={qrCodeUrl}
+                    isPrintView
+                  />
+                ) : (
+                  <A4GSTInvoiceLayout 
+                    invoice={invoice} 
+                    copyId={copyItem.id}
+                    copyType={copyItem.docType}
+                    copyTitle={copyItem.title}
+                    salesmanName={localSalesmanName || invoice.salesman_name || invoice.staff_name} 
+                    salesmanCode={localSalesmanCode || invoice.salesman_code || invoice.staff_code}
+                    accountantName={localAccountantName || invoice.accountant_name}
+                    accountantCode={localAccountantCode || invoice.accountant_code}
+                    qrCodeUrl={qrCodeUrl}
+                    isPrintView
+                  />
+                )}
               </div>
             ))}
           </div>
@@ -661,23 +968,39 @@ function A4GSTInvoiceLayout({
       isPrintView ? 'p-0 w-full min-h-[285mm] max-h-[290mm]' : 'p-0 w-full'
     }`}>
       
-      {/* 1. TOP COMPANY HEADER (Centered) */}
-      <div className="text-center py-2.5 px-4 border-b border-black">
-        <h1 className="text-lg font-black uppercase tracking-wide text-black">
-          {company.name || 'AVYAAN'}
-        </h1>
-        <p className="text-[10px] text-slate-800 font-medium mt-0.5">
-          {company.address || company.billing_address || 'WARD 11, TAJPUR, THANA ROAD, Kasbey Ahar, Samastipur, Bihar, 848130'}
-        </p>
-        <p className="text-[10px] text-slate-800 font-semibold mt-0.5">
-          {company.phone || '9470605923'}
-          {company.email && `, ${company.email}`}
-        </p>
-        {company.gstin && (
-          <p className="text-[10px] font-bold text-black mt-0.5">
-            GSTIN : <span className="font-mono">{company.gstin}</span>
+      {/* 1. TOP COMPANY HEADER (Centered or with Logo on Left) */}
+      <div className="py-2.5 px-4 border-b border-black flex items-center justify-between">
+        {company.logo_url ? (
+          <div className="w-24 shrink-0 flex items-center justify-start">
+            <img 
+              src={company.logo_url} 
+              alt={company.name || 'Logo'} 
+              className="max-h-16 max-w-full object-contain" 
+            />
+          </div>
+        ) : null}
+
+        <div className={`flex-1 text-center ${company.logo_url ? 'px-2' : ''}`}>
+          <h1 className="text-lg font-black uppercase tracking-wide text-black leading-tight">
+            {company.name || 'AVYAAN'}
+          </h1>
+          <p className="text-[10px] text-slate-800 font-medium mt-0.5">
+            {company.address || company.billing_address || 'WARD 11, TAJPUR, THANA ROAD, Kasbey Ahar, Samastipur, Bihar, 848130'}
           </p>
-        )}
+          <p className="text-[10px] text-slate-800 font-semibold mt-0.5">
+            {company.phone || '9470605923'}
+            {company.email && `, ${company.email}`}
+          </p>
+          {company.gstin && (
+            <p className="text-[10px] font-bold text-black mt-0.5">
+              GSTIN : <span className="font-mono">{company.gstin}</span>
+            </p>
+          )}
+        </div>
+
+        {company.logo_url ? (
+          <div className="w-24 shrink-0 hidden sm:block" />
+        ) : null}
       </div>
 
       {/* 2. TITLE BAR WITH COPY CHECKBOXES */}
@@ -750,6 +1073,13 @@ function A4GSTInvoiceLayout({
             <span className="mr-2">:</span>
             <span className="font-mono">{invoice.vehicle_no || ''}</span>
           </div>
+          {invoice.eway_bill_no && (
+            <div className="flex">
+              <span className="w-28 font-bold text-emerald-800">E-Way Bill No.</span>
+              <span className="mr-2">:</span>
+              <span className="font-mono font-bold text-emerald-800 tracking-wide">{invoice.eway_bill_no}</span>
+            </div>
+          )}
           <div className="flex">
             <span className="w-28 font-semibold text-slate-800">Date of Supply</span>
             <span className="mr-2">:</span>
@@ -1075,7 +1405,7 @@ function A4GSTInvoiceLayout({
             </div>
 
             {/* Authorised Signatory Box */}
-            <div className="p-3 text-center flex flex-col justify-between min-h-[110px]">
+            <div className="p-3 text-center flex flex-col justify-between min-h-[125px]">
               <div className="text-[8px] text-slate-700">
                 Certified that the particular given above are true and correct
               </div>
@@ -1084,8 +1414,19 @@ function A4GSTInvoiceLayout({
                 For, {company.name || 'AVYAAN'}
               </div>
 
+              {/* Signature Image */}
+              {company.signature_url ? (
+                <div className="my-1 flex items-center justify-center">
+                  <img 
+                    src={company.signature_url} 
+                    alt="Signature" 
+                    className="max-h-12 max-w-[140px] object-contain" 
+                  />
+                </div>
+              ) : null}
+
               {/* Salesman & Accountant Signatory Info */}
-              <div className="text-[9px] text-slate-800 mt-2 space-y-0.5 text-center">
+              <div className="text-[9px] text-slate-800 mt-1 space-y-0.5 text-center">
                 <div className="flex items-center justify-center space-x-1">
                   <span className="text-slate-600 font-medium">Salesman:</span>
                   <span className="font-bold text-black">{resolvedSalesmanName}</span>
@@ -1104,7 +1445,7 @@ function A4GSTInvoiceLayout({
                 )}
               </div>
 
-              <div className="mt-6 pt-1 border-t border-black/40 text-[9px] font-bold uppercase tracking-wider text-black">
+              <div className="mt-2 pt-1 border-t border-black/40 text-[9px] font-bold uppercase tracking-wider text-black">
                 Authorised Signatory
               </div>
             </div>
@@ -1124,7 +1465,16 @@ function A4GSTInvoiceLayout({
             <div className="font-bold text-xs uppercase text-black">
               For, {company.name || 'AVYAAN'}
             </div>
-            <div className="mt-8 pt-1 border-t border-black text-[9px] font-bold uppercase tracking-wider text-black">
+            {company.signature_url ? (
+              <div className="my-1 flex items-center justify-center">
+                <img 
+                  src={company.signature_url} 
+                  alt="Signature" 
+                  className="max-h-10 max-w-[130px] object-contain" 
+                />
+              </div>
+            ) : null}
+            <div className="mt-4 pt-1 border-t border-black text-[9px] font-bold uppercase tracking-wider text-black">
               Authorised Signatory
             </div>
           </div>
@@ -1163,6 +1513,13 @@ function POSReceiptLayout({
       
       {/* POS Store Header */}
       <div className="text-center pb-2">
+        {company.logo_url && (
+          <img 
+            src={company.logo_url} 
+            alt="Logo" 
+            className="max-h-10 max-w-[120px] object-contain mx-auto mb-1 filter grayscale" 
+          />
+        )}
         <h2 className={`font-black uppercase tracking-tight ${is58 ? 'text-sm' : 'text-base'}`}>
           {company.name || 'APOORV'}
         </h2>
@@ -1284,10 +1641,337 @@ function POSReceiptLayout({
         </div>
       )}
 
+      {/* Signature if available */}
+      {company.signature_url && (
+        <div className="text-center pt-2 pb-1 border-t border-dashed border-slate-800 mt-2">
+          <img 
+            src={company.signature_url} 
+            alt="Signature" 
+            className="max-h-8 max-w-[100px] object-contain mx-auto filter grayscale" 
+          />
+          <p className="text-[8px] uppercase tracking-wider text-slate-700 mt-0.5">Authorised Signatory</p>
+        </div>
+      )}
+
       {/* Footer */}
       <div className="text-center pt-2 border-t border-dashed border-slate-800 mt-2 text-[9px] text-slate-600 space-y-0.5">
         <p className="font-bold text-slate-800">Thank you for your business!</p>
         <p className="text-[8px]">Invoices subject to local jurisdiction.</p>
+      </div>
+
+    </div>
+  );
+}
+
+/**
+ * OFFICIAL GOVERNMENT OF INDIA GST e-WAY BILL A4 LAYOUT
+ * Strict compliance with Rule 138 of Central Goods and Services Tax Rules, 2017
+ * Includes:
+ * - National Emblem / GST Portal Heading
+ * - Barcode & QR Code
+ * - 12-digit E-Way Bill Number & Validity period
+ * - PART-A: Supplier, Recipient, Document No., HSN, Taxable value & tax breakup
+ * - PART-B: Vehicle No., Transport mode, Transporter details, Distance
+ */
+export function EWayBillA4Layout({ invoice, qrCodeUrl, isPrintView = false }) {
+  const company = invoice.company || {};
+  const party = invoice.party || {};
+  const items = invoice.items || [];
+
+  // Generate fallback 12-digit e-way bill number if not set
+  const ewayNo = invoice.eway_bill_no || (
+    '24' + String(Date.now()).slice(-8) + String(Math.floor(10 + Math.random() * 90))
+  );
+
+  const ewayDate = invoice.eway_bill_date || invoice.date || new Date().toISOString().split('T')[0];
+  
+  // Calculate valid until (+2 days standard for distance <= 200km)
+  const validUntil = invoice.eway_valid_until || (() => {
+    const d = new Date(ewayDate);
+    if (isNaN(d.getTime())) return ewayDate;
+    d.setDate(d.getDate() + 2);
+    return d.toISOString().split('T')[0] + ' 11:59 PM';
+  })();
+
+  const hsnCodes = Array.from(new Set(items.map(i => i.hsn).filter(Boolean)));
+  const hsnSummary = hsnCodes.length > 0 ? hsnCodes.join(', ') : '8471';
+
+  const cgst = ((invoice.tax_amount || 0) / 2);
+  const sgst = ((invoice.tax_amount || 0) / 2);
+  const igst = 0; // standard intra-state default
+
+  return (
+    <div className={`w-full bg-white text-slate-900 font-sans p-6 border-2 border-black ${isPrintView ? 'm-0' : 'max-w-[210mm] mx-auto shadow-xl'}`}>
+      
+      {/* 1. GOVERNMENT HEADER */}
+      <div className="flex items-center justify-between border-b-2 border-black pb-3">
+        {/* Emblem & Portal Info */}
+        <div className="flex items-center space-x-3">
+          <div className="w-12 h-12 flex items-center justify-center border border-black rounded-full bg-slate-50 font-serif font-black text-xs text-center leading-none">
+            सत्यमेव<br/>जयते
+          </div>
+          <div>
+            <h1 className="text-sm font-black tracking-wider uppercase text-slate-900">Government of India</h1>
+            <h2 className="text-xs font-bold text-slate-700">GST e-Way Bill System (NIC)</h2>
+            <p className="text-[9px] text-slate-500 font-mono">Under Rule 138 of CGST / SGST Rules, 2017</p>
+          </div>
+        </div>
+
+        {/* Central Title */}
+        <div className="text-center px-4 py-1.5 border-2 border-black bg-slate-100 rounded">
+          <span className="text-base font-black tracking-widest uppercase">e-WAY BILL</span>
+          <p className="text-[9px] font-bold text-emerald-800">PART - A & B (VALID FOR TRANSIT)</p>
+        </div>
+
+        {/* Right QR box */}
+        <div className="text-right flex flex-col items-end">
+          {qrCodeUrl ? (
+            <img src={qrCodeUrl} alt="E-Way Bill QR" className="w-16 h-16 border border-black p-0.5 object-contain" />
+          ) : (
+            <div className="w-16 h-16 border border-black flex items-center justify-center text-[8px] text-slate-400">
+              QR CODE
+            </div>
+          )}
+          <span className="text-[8px] font-mono font-bold mt-0.5">NIC VERIFIED</span>
+        </div>
+      </div>
+
+      {/* 2. E-WAY BILL ESSENTIAL METADATA WITH BARCODE */}
+      <div className="grid grid-cols-12 border-b border-black py-2.5 bg-slate-50/50">
+        <div className="col-span-8 space-y-1 text-[11px] pr-2">
+          <div className="flex items-center">
+            <span className="w-36 font-bold text-slate-900">e-Way Bill No.</span>
+            <span className="mr-2 font-bold">:</span>
+            <span className="font-mono text-sm font-black tracking-widest text-slate-950 bg-yellow-100 px-2 py-0.5 border border-yellow-400 rounded">
+              {ewayNo.replace(/(\d{4})(\d{4})(\d{4})/, '$1 $2 $3')}
+            </span>
+          </div>
+
+          <div className="flex items-center">
+            <span className="w-36 font-semibold text-slate-700">e-Way Bill Date</span>
+            <span className="mr-2">:</span>
+            <span className="font-mono font-medium">{ewayDate}</span>
+          </div>
+
+          <div className="flex items-center">
+            <span className="w-36 font-semibold text-slate-700">Generated By</span>
+            <span className="mr-2">:</span>
+            <span className="font-mono font-bold">{company.gstin || '10AABCV8901M1Z5'}</span>
+            <span className="ml-1 text-[10px] text-slate-600">({company.name || 'VSRM ENTERPRISES'})</span>
+          </div>
+
+          <div className="flex items-center">
+            <span className="w-36 font-semibold text-slate-700">Valid From</span>
+            <span className="mr-2">:</span>
+            <span className="font-mono font-medium">{ewayDate} 10:00 AM</span>
+          </div>
+
+          <div className="flex items-center">
+            <span className="w-36 font-bold text-emerald-900">Valid Until</span>
+            <span className="mr-2 font-bold">:</span>
+            <span className="font-mono font-bold text-emerald-900 bg-emerald-50 px-1.5 py-0.5 border border-emerald-300 rounded">
+              {validUntil}
+            </span>
+            <span className="ml-2 text-[10px] text-slate-500 font-medium">(Approx. {invoice.approx_distance || 35} KM)</span>
+          </div>
+        </div>
+
+        {/* Barcode Visual Box */}
+        <div className="col-span-4 border-l border-slate-300 pl-3 flex flex-col justify-center items-center text-center">
+          <div className="w-full flex items-center justify-center space-x-0.5 py-2 bg-white border border-slate-300 px-2">
+            {/* Realistic Barcode Stripes */}
+            {[2,1,3,1,2,4,1,2,1,3,2,1,4,1,2,1,3,1,2,1,4,2,1,3,1,2,3,1,2,4,1,2,1].map((w, i) => (
+              <span 
+                key={i} 
+                className="bg-black inline-block h-8" 
+                style={{ width: `${w * 1.5}px` }}
+              />
+            ))}
+          </div>
+          <p className="font-mono text-[10px] font-bold tracking-widest mt-1 text-slate-800">
+            *{ewayNo.replace(/\s+/g, '')}*
+          </p>
+          <span className="text-[8px] text-slate-500 uppercase">GST Standard Barcode 128</span>
+        </div>
+      </div>
+
+      {/* 3. PART - A (GOODS & SUPPLY DETAILS) */}
+      <div className="mt-2 border border-black">
+        <div className="bg-slate-200 border-b border-black px-2 py-1 flex items-center justify-between">
+          <span className="text-xs font-black tracking-wider uppercase">PART - A: Details of Goods</span>
+          <span className="text-[10px] text-slate-700 font-semibold">Mandatory for Transit</span>
+        </div>
+
+        <table className="w-full text-[10px] border-collapse">
+          <tbody>
+            <tr className="border-b border-slate-300">
+              <td className="w-10 p-1.5 text-center font-bold border-r border-slate-300 bg-slate-50">1</td>
+              <td className="w-48 p-1.5 font-bold border-r border-slate-300">GSTIN of Supplier</td>
+              <td className="p-1.5 font-mono font-bold">{company.gstin || '10AABCV8901M1Z5'} - {company.name || 'VSRM ENTERPRISES'}</td>
+            </tr>
+            <tr className="border-b border-slate-300">
+              <td className="p-1.5 text-center font-bold border-r border-slate-300 bg-slate-50">2</td>
+              <td className="p-1.5 font-bold border-r border-slate-300">Place of Dispatch</td>
+              <td className="p-1.5">{company.address ? `${company.address}, ` : ''}{company.city || 'Patna'}, {company.state || 'Bihar'} - PIN: 800001</td>
+            </tr>
+            <tr className="border-b border-slate-300">
+              <td className="p-1.5 text-center font-bold border-r border-slate-300 bg-slate-50">3</td>
+              <td className="p-1.5 font-bold border-r border-slate-300">GSTIN of Recipient</td>
+              <td className="p-1.5 font-mono font-bold text-slate-900">
+                {party.gstin || 'URP (Unregistered Person)'} - {party.name}
+              </td>
+            </tr>
+            <tr className="border-b border-slate-300">
+              <td className="p-1.5 text-center font-bold border-r border-slate-300 bg-slate-50">4</td>
+              <td className="p-1.5 font-bold border-r border-slate-300">Place of Delivery</td>
+              <td className="p-1.5">{party.address ? `${party.address}, ` : ''}{party.city || 'Patna'}, {party.state || 'Bihar'}</td>
+            </tr>
+            <tr className="border-b border-slate-300">
+              <td className="p-1.5 text-center font-bold border-r border-slate-300 bg-slate-50">5</td>
+              <td className="p-1.5 font-bold border-r border-slate-300">Document No. & Date</td>
+              <td className="p-1.5 font-mono font-bold text-blue-900">
+                Tax Invoice No: {invoice.txn_no} | Date: {invoice.date}
+              </td>
+            </tr>
+            <tr className="border-b border-slate-300">
+              <td className="p-1.5 text-center font-bold border-r border-slate-300 bg-slate-50">6</td>
+              <td className="p-1.5 font-bold border-r border-slate-300">Value of Goods</td>
+              <td className="p-1.5">
+                <span className="font-bold font-mono text-sm text-slate-950">₹{(invoice.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                <span className="ml-3 text-[9px] text-slate-600 font-mono">
+                  (Taxable: ₹{(invoice.subtotal || invoice.amount || 0).toLocaleString('en-IN')} | CGST: ₹{cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })} | SGST: ₹{sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })} | IGST: ₹{igst})
+                </span>
+              </td>
+            </tr>
+            <tr className="border-b border-slate-300">
+              <td className="p-1.5 text-center font-bold border-r border-slate-300 bg-slate-50">7</td>
+              <td className="p-1.5 font-bold border-r border-slate-300">HSN Code</td>
+              <td className="p-1.5 font-mono font-bold">{hsnSummary}</td>
+            </tr>
+            <tr>
+              <td className="p-1.5 text-center font-bold border-r border-slate-300 bg-slate-50">8</td>
+              <td className="p-1.5 font-bold border-r border-slate-300">Reason for Transportation</td>
+              <td className="p-1.5 font-semibold text-slate-800">
+                {invoice.supply_type || 'Supply'} - {invoice.sub_type || 'Outward'}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* 4. PART - B (VEHICLE & TRANSPORTATION DETAILS) */}
+      <div className="mt-3 border border-black">
+        <div className="bg-slate-200 border-b border-black px-2 py-1 flex items-center justify-between">
+          <span className="text-xs font-black tracking-wider uppercase">PART - B: Vehicle & Transport Details</span>
+          <span className="text-[10px] text-slate-700 font-semibold">Active Conveyance</span>
+        </div>
+
+        <table className="w-full text-[10px] border-collapse text-center">
+          <thead>
+            <tr className="bg-slate-100 border-b border-black font-bold">
+              <th className="p-1.5 border-r border-slate-300">Mode</th>
+              <th className="p-1.5 border-r border-slate-300">Vehicle / Doc No.</th>
+              <th className="p-1.5 border-r border-slate-300">From</th>
+              <th className="p-1.5 border-r border-slate-300">Entered Date</th>
+              <th className="p-1.5 border-r border-slate-300">Entered By</th>
+              <th className="p-1.5 border-r border-slate-300">CEWB No.</th>
+              <th className="p-1.5">Multi-Veh.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="border-b border-slate-200 font-medium">
+              <td className="p-1.5 border-r border-slate-300 font-bold uppercase">{invoice.transport_mode || 'Road'}</td>
+              <td className="p-1.5 border-r border-slate-300 font-mono font-black text-sm text-blue-950 uppercase">
+                {invoice.vehicle_no || invoice.transporter_doc_no || 'BR-01-GB-4592'}
+              </td>
+              <td className="p-1.5 border-r border-slate-300">{company.city || 'Patna'} ({company.state || 'Bihar'})</td>
+              <td className="p-1.5 border-r border-slate-300 font-mono">{ewayDate}</td>
+              <td className="p-1.5 border-r border-slate-300 font-mono text-[9px]">{company.gstin || '10AABCV8901M1Z5'}</td>
+              <td className="p-1.5 border-r border-slate-300 text-slate-400 font-mono">-</td>
+              <td className="p-1.5 text-slate-600 font-semibold">No</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Transporter Details Row */}
+        <div className="p-2 bg-slate-50 border-t border-slate-300 text-[10px] grid grid-cols-3 gap-2">
+          <div>
+            <span className="text-slate-600 font-medium">Transporter Name: </span>
+            <span className="font-bold text-slate-900">{invoice.transporter_name || 'Self / Direct Transport'}</span>
+          </div>
+          <div>
+            <span className="text-slate-600 font-medium">Transporter ID: </span>
+            <span className="font-mono font-bold text-slate-900">{invoice.transporter_id || 'NA'}</span>
+          </div>
+          <div>
+            <span className="text-slate-600 font-medium">Approx. Distance: </span>
+            <span className="font-bold text-slate-900 font-mono">{invoice.approx_distance || 35} KM</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. ITEM SUMMARY TABLE FOR CONSIGNMENT */}
+      <div className="mt-3 border border-black">
+        <div className="bg-slate-200 border-b border-black px-2 py-1">
+          <span className="text-xs font-black tracking-wider uppercase">Consignment Item Summary</span>
+        </div>
+        <table className="w-full text-[10px] border-collapse">
+          <thead>
+            <tr className="bg-slate-100 border-b border-black font-bold">
+              <th className="p-1 border-r border-slate-300 w-8 text-center">#</th>
+              <th className="p-1 border-r border-slate-300 text-left">Product Name & Description</th>
+              <th className="p-1 border-r border-slate-300 w-20 text-center">HSN</th>
+              <th className="p-1 border-r border-slate-300 w-16 text-right">Qty</th>
+              <th className="p-1 border-r border-slate-300 w-20 text-right">Taxable Val (₹)</th>
+              <th className="p-1 border-r border-slate-300 w-16 text-center">GST Rate</th>
+              <th className="p-1 text-right w-24">Total (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item, idx) => (
+              <tr key={idx} className="border-b border-slate-200">
+                <td className="p-1 border-r border-slate-300 text-center font-mono">{idx + 1}</td>
+                <td className="p-1 border-r border-slate-300 font-medium text-slate-900">{item.item_name}</td>
+                <td className="p-1 border-r border-slate-300 text-center font-mono">{item.hsn || '-'}</td>
+                <td className="p-1 border-r border-slate-300 text-right font-mono font-semibold">{item.quantity} {item.unit || 'PCS'}</td>
+                <td className="p-1 border-r border-slate-300 text-right font-mono">₹{(item.taxable_amount || item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                <td className="p-1 border-r border-slate-300 text-center font-mono font-semibold">{item.gst_rate || 18}%</td>
+                <td className="p-1 text-right font-mono font-bold">₹{(item.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="bg-slate-100 font-bold border-t border-black">
+              <td colSpan={3} className="p-1.5 text-right border-r border-slate-300">TOTAL CONSIGNMENT VALUE:</td>
+              <td className="p-1.5 text-right border-r border-slate-300 font-mono">
+                {items.reduce((s, i) => s + (parseFloat(i.quantity) || 0), 0)}
+              </td>
+              <td className="p-1.5 text-right border-r border-slate-300 font-mono">
+                ₹{(invoice.subtotal || invoice.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </td>
+              <td className="p-1.5 border-r border-slate-300"></td>
+              <td className="p-1.5 text-right font-mono text-xs font-black">
+                ₹{(invoice.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      {/* 6. STATUTORY DECLARATION & FOOTER */}
+      <div className="mt-3 pt-2 border-t border-black text-[9px] text-slate-700 space-y-1">
+        <div className="flex justify-between items-end">
+          <div className="space-y-0.5 max-w-[65%]">
+            <p className="font-bold text-slate-900">Statutory Notice:</p>
+            <p>1. This is a computer generated e-Way Bill under Rule 138 of Central Goods and Services Tax Rules, 2017.</p>
+            <p>2. Goods are in transit and covered under valid Tax Invoice {invoice.txn_no}.</p>
+            <p>3. Tax officers may verify this document using QR code or via GST e-Way Bill portal (ewaybillgst.gov.in).</p>
+          </div>
+          <div className="text-right border-t border-black pt-1 w-52">
+            <p className="font-bold text-slate-900 text-[10px]">{company.name || 'VSRM ENTERPRISES'}</p>
+            <p className="text-[8px] text-slate-500 mt-6">(Authorised Signatory / Generator)</p>
+          </div>
+        </div>
       </div>
 
     </div>

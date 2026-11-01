@@ -8,7 +8,8 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Serve static frontend files from client/dist
 const clientDistPath = path.resolve(__dirname, '../client/dist');
@@ -44,7 +45,8 @@ app.post('/api/companies', (req, res) => {
     const { 
       name, phone, email, gstin, address, upi_id, tagline, terms,
       billing_address, city, state, pincode, is_gst_registered,
-      business_type, industry_type, registration_type, website, make_active
+      business_type, industry_type, registration_type, website, make_active,
+      logo_url, signature_url
     } = req.body;
 
     if (!name || !String(name).trim()) {
@@ -62,8 +64,9 @@ app.post('/api/companies', (req, res) => {
       INSERT INTO company_settings (
         name, phone, email, gstin, address, upi_id, tagline, terms,
         billing_address, city, state, pincode, is_gst_registered,
-        business_type, industry_type, registration_type, website, is_active
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        business_type, industry_type, registration_type, website, is_active,
+        logo_url, signature_url
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       name.trim(),
       phone || '',
@@ -82,14 +85,18 @@ app.post('/api/companies', (req, res) => {
       industry_type || 'General Trading',
       registration_type || 'Proprietorship',
       website || '',
-      shouldActivate
+      shouldActivate,
+      logo_url || '',
+      signature_url || ''
     );
 
     const newCompany = db.prepare('SELECT * FROM company_settings WHERE id = ?').get(result.lastInsertRowid) || {
       id: result.lastInsertRowid,
       name,
       phone,
-      is_active: shouldActivate
+      is_active: shouldActivate,
+      logo_url: logo_url || '',
+      signature_url: signature_url || ''
     };
 
     res.json({ success: true, company: newCompany });
@@ -130,7 +137,8 @@ app.put('/api/company', (req, res) => {
     const { 
       id, name, phone, email, gstin, address, upi_id, tagline, terms,
       billing_address, city, state, pincode, is_gst_registered,
-      business_type, industry_type, registration_type, website
+      business_type, industry_type, registration_type, website,
+      logo_url, signature_url
     } = req.body;
 
     let targetId = id ? Number(id) : null;
@@ -139,16 +147,26 @@ app.put('/api/company', (req, res) => {
       targetId = active ? active.id : 1;
     }
 
+    let existingCompany = {};
+    try {
+      existingCompany = db.prepare('SELECT * FROM company_settings WHERE id = ?').get(targetId) || {};
+    } catch (e) {}
+
+    const finalLogo = logo_url !== undefined ? logo_url : (existingCompany.logo_url || '');
+    const finalSig = signature_url !== undefined ? signature_url : (existingCompany.signature_url || '');
+
     db.prepare(`
       UPDATE company_settings 
       SET name = ?, phone = ?, email = ?, gstin = ?, address = ?, upi_id = ?, tagline = ?, terms = ?,
           billing_address = ?, city = ?, state = ?, pincode = ?, is_gst_registered = ?,
-          business_type = ?, industry_type = ?, registration_type = ?, website = ?
+          business_type = ?, industry_type = ?, registration_type = ?, website = ?,
+          logo_url = ?, signature_url = ?
       WHERE id = ?
     `).run(
       name, phone, email, gstin, address || billing_address, upi_id, tagline, terms,
       billing_address || address, city, state, pincode, is_gst_registered ? 1 : 0,
       business_type, industry_type, registration_type, website || '',
+      finalLogo, finalSig,
       targetId
     );
     const updated = db.prepare('SELECT * FROM company_settings WHERE id = ?').get(targetId);
@@ -825,7 +843,13 @@ app.get('/api/transactions/:id', (req, res) => {
         pincode: txn.party_pincode || party.pincode || ''
       };
     }
-    const company = db.prepare('SELECT * FROM company_settings LIMIT 1').get();
+    let company = null;
+    try {
+      company = db.prepare('SELECT * FROM company_settings WHERE is_active = 1 LIMIT 1').get();
+    } catch (e) {}
+    if (!company) {
+      company = db.prepare('SELECT * FROM company_settings LIMIT 1').get();
+    }
     let bankAccounts = [];
     try {
       bankAccounts = db.prepare('SELECT * FROM bank_accounts').all() || [];
@@ -931,6 +955,55 @@ app.patch('/api/transactions/:id/staff', (req, res) => {
   }
 });
 
+// Update or Generate E-Way Bill on an existing transaction
+app.patch('/api/transactions/:id/eway', (req, res) => {
+  try {
+    const txnId = req.params.id;
+    const {
+      eway_bill_no,
+      eway_bill_date,
+      eway_valid_until,
+      vehicle_no,
+      transporter_name,
+      transporter_id,
+      transporter_doc_no,
+      transport_mode,
+      approx_distance,
+      supply_type,
+      sub_type
+    } = req.body;
+
+    const stmt = db.prepare(`
+      UPDATE transactions 
+      SET eway_bill_no = ?, eway_bill_date = ?, eway_valid_until = ?, vehicle_no = ?,
+          transporter_name = ?, transporter_id = ?, transporter_doc_no = ?,
+          transport_mode = ?, approx_distance = ?, supply_type = ?, sub_type = ?
+      WHERE id = ?
+    `);
+
+    stmt.run(
+      eway_bill_no || null,
+      eway_bill_date || null,
+      eway_valid_until || null,
+      vehicle_no || '',
+      transporter_name || '',
+      transporter_id || '',
+      transporter_doc_no || '',
+      transport_mode || 'Road',
+      parseFloat(approx_distance) || 0,
+      supply_type || 'Outward',
+      sub_type || 'Supply',
+      txnId
+    );
+
+    const updated = db.prepare('SELECT * FROM transactions WHERE id = ?').get(txnId);
+    res.json({ success: true, transaction: updated });
+  } catch (err) {
+    console.error('Error updating E-Way Bill:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Public customer invoice view API
 app.get('/api/public/bill/:identifier', (req, res) => {
   try {
@@ -964,7 +1037,13 @@ app.get('/api/public/bill/:identifier', (req, res) => {
         pincode: txn.party_pincode || party.pincode || ''
       };
     }
-    const company = db.prepare('SELECT * FROM company_settings LIMIT 1').get();
+    let company = null;
+    try {
+      company = db.prepare('SELECT * FROM company_settings WHERE is_active = 1 LIMIT 1').get();
+    } catch (e) {}
+    if (!company) {
+      company = db.prepare('SELECT * FROM company_settings LIMIT 1').get();
+    }
 
     res.json({
       ...txn,
@@ -1010,6 +1089,18 @@ app.post('/api/transactions', (req, res) => {
       accountant_code,
       accountant_name,
       accountant_commission_rate,
+      // E-Way Bill & Transport Details
+      eway_bill_no,
+      eway_bill_date,
+      eway_valid_until,
+      vehicle_no,
+      transporter_name,
+      transporter_id,
+      transporter_doc_no,
+      transport_mode,
+      approx_distance,
+      supply_type,
+      sub_type,
       items // Array of items
     } = req.body;
 
@@ -1040,7 +1131,7 @@ app.post('/api/transactions', (req, res) => {
       generatedNo = `${prefix}-${Date.now().toString().slice(-4)}-${countRow.count + 1}`;
     }
 
-    // Insert transaction with party snapshot and staff attribution
+    // Insert transaction with party snapshot, staff attribution, and E-Way Bill details
     const insertTxnStmt = db.prepare(`
       INSERT INTO transactions (
         txn_no, type, date, party_id, party_name, subtotal, tax_amount, discount, 
@@ -1048,8 +1139,11 @@ app.post('/api/transactions', (req, res) => {
         party_phone, party_gstin, party_address, party_city, party_state, party_pincode,
         staff_id, staff_code, staff_name, staff_commission_rate, staff_commission_amount,
         salesman_id, salesman_code, salesman_name, salesman_commission_rate, salesman_commission_amount,
-        accountant_id, accountant_code, accountant_name, accountant_commission_rate, accountant_commission_amount
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        accountant_id, accountant_code, accountant_name, accountant_commission_rate, accountant_commission_amount,
+        eway_bill_no, eway_bill_date, eway_valid_until, vehicle_no,
+        transporter_name, transporter_id, transporter_doc_no, transport_mode,
+        approx_distance, supply_type, sub_type
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = insertTxnStmt.run(
@@ -1090,7 +1184,19 @@ app.post('/api/transactions', (req, res) => {
       finalAccountantCode,
       finalAccountantName,
       finalAccountantRate,
-      finalAccountantAmt
+      finalAccountantAmt,
+      // E-Way Bill & Transport
+      eway_bill_no || null,
+      eway_bill_date || null,
+      eway_valid_until || null,
+      vehicle_no || '',
+      transporter_name || '',
+      transporter_id || '',
+      transporter_doc_no || '',
+      transport_mode || 'Road',
+      parseFloat(approx_distance) || 0,
+      supply_type || 'Outward',
+      sub_type || 'Supply'
     );
 
     const transactionId = result.lastInsertRowid;

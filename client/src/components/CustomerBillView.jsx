@@ -170,20 +170,31 @@ export default function CustomerBillView({ identifier, onBackToApp }) {
           
           {/* Company & Bill Title */}
           <div className="border-b-2 border-slate-900 pb-4 flex flex-col sm:flex-row justify-between items-start gap-4">
-            <div>
-              <h1 className="text-2xl font-black uppercase text-slate-950 tracking-tight">
-                {bill.company?.name || 'APOORV'}
-              </h1>
-              {bill.company?.tagline && (
-                <p className="text-xs text-slate-500 font-medium">{bill.company.tagline}</p>
+            <div className="flex items-start space-x-3.5">
+              {bill.company?.logo_url && (
+                <div className="shrink-0">
+                  <img 
+                    src={bill.company.logo_url} 
+                    alt={bill.company.name || 'Logo'} 
+                    className="max-h-16 max-w-[120px] object-contain rounded" 
+                  />
+                </div>
               )}
-              <p className="text-xs text-slate-600 mt-1 max-w-sm">
-                {bill.company?.billing_address || bill.company?.address || 'Samastipur, Bihar'}
-              </p>
-              <p className="text-xs font-semibold text-slate-800 mt-0.5">
-                Phone: <span className="font-mono">{bill.company?.phone || '8130140936'}</span>
-                {(bill.company?.gstin) && <span> | GSTIN: <span className="font-mono">{bill.company.gstin}</span></span>}
-              </p>
+              <div>
+                <h1 className="text-2xl font-black uppercase text-slate-950 tracking-tight leading-tight">
+                  {bill.company?.name || 'APOORV'}
+                </h1>
+                {bill.company?.tagline && (
+                  <p className="text-xs text-slate-500 font-medium">{bill.company.tagline}</p>
+                )}
+                <p className="text-xs text-slate-600 mt-1 max-w-sm">
+                  {bill.company?.billing_address || bill.company?.address || 'Samastipur, Bihar'}
+                </p>
+                <p className="text-xs font-semibold text-slate-800 mt-0.5">
+                  Phone: <span className="font-mono">{bill.company?.phone || '8130140936'}</span>
+                  {(bill.company?.gstin) && <span> | GSTIN: <span className="font-mono">{bill.company.gstin}</span></span>}
+                </p>
+              </div>
             </div>
 
             <div className="text-left sm:text-right">
@@ -325,7 +336,16 @@ export default function CustomerBillView({ identifier, onBackToApp }) {
             </div>
             <div className="text-right flex flex-col justify-between items-end">
               <span className="font-bold text-slate-800">For {bill.company?.name || 'APOORV'}</span>
-              <div className="mt-6 border-t border-slate-400 pt-1 w-36 text-center text-slate-500">
+              {bill.company?.signature_url && (
+                <div className="my-1">
+                  <img 
+                    src={bill.company.signature_url} 
+                    alt="Signature" 
+                    className="max-h-12 max-w-[130px] object-contain" 
+                  />
+                </div>
+              )}
+              <div className="mt-2 border-t border-slate-400 pt-1 w-36 text-center text-slate-500">
                 Authorized Signatory
               </div>
             </div>
@@ -340,16 +360,27 @@ export default function CustomerBillView({ identifier, onBackToApp }) {
           <div className="print-page-break-avoid w-full bg-white text-slate-900 font-sans p-6 max-h-[275mm] overflow-hidden">
             {/* Header */}
             <div className="border-b-2 border-slate-900 pb-3 flex justify-between items-start">
-              <div>
-                <h1 className="text-2xl font-black uppercase text-slate-950 tracking-tight leading-none">
-                  {bill.company?.name || 'APOORV'}
-                </h1>
-                <p className="text-[11px] text-slate-600 font-medium mt-0.5">{bill.company?.tagline || 'Quality Feeds & Engineering Solutions'}</p>
-                <p className="text-[11px] text-slate-600 mt-0.5">{bill.company?.address || 'Samastipur, Bihar'}</p>
-                <p className="text-[11px] font-semibold text-slate-800">
-                  Phone: <span className="font-mono">{bill.company?.phone || '8130140936'}</span>
-                  {bill.company?.gstin && <span> | GSTIN: <span className="font-mono">{bill.company.gstin}</span></span>}
-                </p>
+              <div className="flex items-start space-x-3">
+                {bill.company?.logo_url && (
+                  <div className="shrink-0">
+                    <img 
+                      src={bill.company.logo_url} 
+                      alt={bill.company.name || 'Logo'} 
+                      className="max-h-16 max-w-[120px] object-contain" 
+                    />
+                  </div>
+                )}
+                <div>
+                  <h1 className="text-2xl font-black uppercase text-slate-950 tracking-tight leading-none">
+                    {bill.company?.name || 'APOORV'}
+                  </h1>
+                  <p className="text-[11px] text-slate-600 font-medium mt-0.5">{bill.company?.tagline || 'Quality Feeds & Engineering Solutions'}</p>
+                  <p className="text-[11px] text-slate-600 mt-0.5">{bill.company?.address || 'Samastipur, Bihar'}</p>
+                  <p className="text-[11px] font-semibold text-slate-800">
+                    Phone: <span className="font-mono">{bill.company?.phone || '8130140936'}</span>
+                    {bill.company?.gstin && <span> | GSTIN: <span className="font-mono">{bill.company.gstin}</span></span>}
+                  </p>
+                </div>
               </div>
 
               <div className="text-right">
@@ -470,7 +501,16 @@ export default function CustomerBillView({ identifier, onBackToApp }) {
               </div>
               <div className="text-right flex flex-col justify-between items-end">
                 <span className="font-bold text-slate-800">For {bill.company?.name || 'APOORV'}</span>
-                <div className="mt-4 border-t border-slate-400 pt-0.5 w-36 text-center text-slate-500 text-[8px] space-y-0.5">
+                {bill.company?.signature_url && (
+                  <div className="my-1">
+                    <img 
+                      src={bill.company.signature_url} 
+                      alt="Signature" 
+                      className="max-h-12 max-w-[130px] object-contain" 
+                    />
+                  </div>
+                )}
+                <div className="mt-2 border-t border-slate-400 pt-0.5 w-36 text-center text-slate-500 text-[8px] space-y-0.5">
                   <div>Authorized Signatory</div>
                   {bill.staff_name && (
                     <div className="text-[8px] text-slate-600 font-medium">Billed By: {bill.staff_name} {bill.staff_code ? `(${bill.staff_code})` : ''}</div>

@@ -27,7 +27,8 @@ import {
   LogOut,
   Check,
   AlertCircle,
-  Pencil
+  Pencil,
+  Trash2
 } from 'lucide-react';
 import CreateBusinessModal from './CreateBusinessModal';
 import EditBusinessModal from './EditBusinessModal';
@@ -56,7 +57,9 @@ export default function SettingsView({
     website: 'vsrm.shop',
     upi_id: '8936863035@upi',
     tagline: 'Professional Computer & IT Training Institute',
-    terms: '1. Fees / Goods once sold will not be taken back.\n2. Invoices are subject to Samastipur jurisdiction.'
+    terms: '1. Fees / Goods once sold will not be taken back.\n2. Invoices are subject to Samastipur jurisdiction.',
+    logo_url: '',
+    signature_url: ''
   });
 
   const [saved, setSaved] = useState(false);
@@ -108,13 +111,61 @@ export default function SettingsView({
         website: company.website || 'vsrm.shop',
         upi_id: company.upi_id || '8936863035@upi',
         tagline: company.tagline || 'Professional Computer & IT Training Institute',
-        terms: company.terms || '1. Fees / Goods once sold will not be taken back.\n2. Invoices are subject to Samastipur jurisdiction.'
+        terms: company.terms || '1. Fees / Goods once sold will not be taken back.\n2. Invoices are subject to Samastipur jurisdiction.',
+        logo_url: company.logo_url || company.logo || '',
+        signature_url: company.signature_url || company.signature || ''
       });
       if (company.website) {
         setActiveDetailVal(company.website);
       }
     }
   }, [company]);
+
+  const handleImageUpload = (e, field) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size 5MB se zyada nahi hona chahiye.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target.result;
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 800;
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        const optimized = canvas.toDataURL('image/png');
+        setFormData(prev => ({ ...prev, [field]: optimized }));
+      };
+      img.onerror = () => {
+        setFormData(prev => ({ ...prev, [field]: dataUrl }));
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = (field) => {
+    setFormData(prev => ({ ...prev, [field]: '' }));
+  };
 
   const handleSwitchCompany = async (companyId) => {
     try {
@@ -438,14 +489,48 @@ export default function SettingsView({
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
                 {/* Upload Logo Box */}
                 <div className="sm:col-span-4">
-                  <label className="border-2 border-dashed border-blue-400/80 hover:border-blue-600 bg-blue-50/20 hover:bg-blue-50/40 rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition min-h-[110px] group">
-                    <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
-                      <ImageIcon className="w-4 h-4 stroke-[2.5]" />
+                  {formData.logo_url ? (
+                    <div className="border-2 border-slate-200 rounded-xl p-3 bg-slate-50 flex flex-col items-center justify-center text-center min-h-[110px] relative group shadow-2xs">
+                      <img 
+                        src={formData.logo_url} 
+                        alt="Business Logo Preview" 
+                        className="max-h-16 max-w-full object-contain mb-2 rounded" 
+                      />
+                      <div className="flex items-center space-x-1.5">
+                        <label className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-white border border-blue-200 px-2 py-0.5 rounded cursor-pointer shadow-2xs hover:bg-blue-50 transition">
+                          Change
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={(e) => handleImageUpload(e, 'logo_url')} 
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage('logo_url')}
+                          className="text-[10px] font-bold text-red-600 hover:text-red-800 bg-white border border-red-200 px-2 py-0.5 rounded shadow-2xs hover:bg-red-50 transition"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <span className="text-[9px] text-emerald-600 font-semibold mt-1">✓ Preview Active</span>
                     </div>
-                    <span className="text-xs font-bold text-blue-700">Upload Logo</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5 font-medium">PNG/JPG, max 5 MB.</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={() => alert('Logo uploaded successfully!')} />
-                  </label>
+                  ) : (
+                    <label className="border-2 border-dashed border-blue-400/80 hover:border-blue-600 bg-blue-50/20 hover:bg-blue-50/40 rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition min-h-[110px] group">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                        <ImageIcon className="w-4 h-4 stroke-[2.5]" />
+                      </div>
+                      <span className="text-xs font-bold text-blue-700">Upload Logo</span>
+                      <span className="text-[10px] text-slate-400 mt-0.5 font-medium">PNG/JPG, max 5 MB</span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={(e) => handleImageUpload(e, 'logo_url')} 
+                      />
+                    </label>
+                  )}
                 </div>
 
                 {/* Business Name */}
@@ -723,15 +808,50 @@ export default function SettingsView({
                 {/* Signature Box */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Signature
+                    Signature (हस्ताक्षर)
                   </label>
-                  <label className="border-2 border-dashed border-blue-400/80 hover:border-blue-600 bg-white hover:bg-blue-50/20 rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition group">
-                    <span className="text-xs font-bold text-blue-600 group-hover:underline flex items-center space-x-1">
-                      <Plus className="w-3.5 h-3.5 text-blue-600 stroke-[3]" />
-                      <span>Add Signature</span>
-                    </span>
-                    <input type="file" accept="image/*" className="hidden" onChange={() => alert('Signature uploaded successfully!')} />
-                  </label>
+                  {formData.signature_url ? (
+                    <div className="border-2 border-slate-200 rounded-xl p-4 bg-white flex flex-col items-center justify-center text-center min-h-[110px] relative shadow-2xs">
+                      <img 
+                        src={formData.signature_url} 
+                        alt="Signature Preview" 
+                        className="max-h-16 max-w-full object-contain mb-2" 
+                      />
+                      <div className="flex items-center space-x-2">
+                        <label className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-white border border-blue-200 px-2.5 py-1 rounded cursor-pointer shadow-2xs hover:bg-blue-50 transition">
+                          Change Signature
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={(e) => handleImageUpload(e, 'signature_url')} 
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage('signature_url')}
+                          className="text-[10px] font-bold text-red-600 hover:text-red-800 bg-white border border-red-200 px-2.5 py-1 rounded shadow-2xs hover:bg-red-50 transition"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <span className="text-[9px] text-emerald-600 font-semibold mt-1">✓ Preview Active</span>
+                    </div>
+                  ) : (
+                    <label className="border-2 border-dashed border-blue-400/80 hover:border-blue-600 bg-white hover:bg-blue-50/20 rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition group">
+                      <span className="text-xs font-bold text-blue-600 group-hover:underline flex items-center space-x-1">
+                        <Plus className="w-3.5 h-3.5 text-blue-600 stroke-[3]" />
+                        <span>Add Signature</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400 mt-1 font-medium">PNG/JPG with white/transparent background</span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={(e) => handleImageUpload(e, 'signature_url')} 
+                      />
+                    </label>
+                  )}
                 </div>
 
                 {/* Add Business Details Box */}

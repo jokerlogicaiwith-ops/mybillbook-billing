@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Plus, Trash2, Calculator, Check, ArrowRight, ArrowLeft, ScanLine, AlertTriangle, Sparkles, MapPin } from 'lucide-react';
+import { X, Plus, Trash2, Calculator, Check, ArrowRight, ArrowLeft, ScanLine, AlertTriangle, Sparkles, MapPin, Truck, RefreshCw, FileText } from 'lucide-react';
 
 export default function CreateInvoiceModal({ 
   isOpen, 
@@ -26,6 +26,24 @@ export default function CreateInvoiceModal({
   const [paidAmount, setPaidAmount] = useState(0);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // E-Way Bill & Transport State (ई-वे बिल ऑप्शन)
+  const generateEwayBillNo = () => {
+    const part1 = Math.floor(1000 + Math.random() * 9000);
+    const part2 = Math.floor(1000 + Math.random() * 9000);
+    return `2410 ${part1} ${part2}`;
+  };
+
+  const [enableEwayBill, setEnableEwayBill] = useState(false);
+  const [ewayBillNo, setEwayBillNo] = useState('');
+  const [vehicleNo, setVehicleNo] = useState('');
+  const [transporterName, setTransporterName] = useState('');
+  const [transporterId, setTransporterId] = useState('');
+  const [transporterDocNo, setTransporterDocNo] = useState('');
+  const [approxDistance, setApproxDistance] = useState('85');
+  const [transportMode, setTransportMode] = useState('Road');
+  const [supplyType, setSupplyType] = useState('Outward');
+  const [subType, setSubType] = useState('Supply');
 
   // Staff, Salesman and Accountant Commission state
   const [staffList, setStaffList] = useState([]);
@@ -62,6 +80,16 @@ export default function CreateInvoiceModal({
       generateSuggestedTxnNo(initialType);
       setBarcodeQuery('');
       setScanFeedback(null);
+      setEnableEwayBill(false);
+      setEwayBillNo(generateEwayBillNo());
+      setVehicleNo('');
+      setTransporterName('');
+      setTransporterId('');
+      setTransporterDocNo('');
+      setApproxDistance('85');
+      setTransportMode('Road');
+      setSupplyType('Outward');
+      setSubType('Supply');
       // Auto-focus barcode scanner after modal opens
       setTimeout(() => {
         if (barcodeInputRef.current) barcodeInputRef.current.focus();
@@ -406,6 +434,24 @@ export default function CreateInvoiceModal({
         paid_amount: parseFloat(paidAmount) || 0,
         payment_type: paymentType,
         notes: notes,
+        // E-Way Bill & Transport Details
+        eway_bill_no: enableEwayBill ? (ewayBillNo.replace(/\s+/g, '') ? ewayBillNo : generateEwayBillNo()) : null,
+        eway_bill_date: enableEwayBill ? `${date} 10:30 AM` : null,
+        eway_valid_until: enableEwayBill ? (() => {
+          const d = new Date(date);
+          const dist = parseFloat(approxDistance) || 50;
+          const days = Math.max(1, Math.ceil(dist / 200));
+          d.setDate(d.getDate() + days);
+          return `${d.toISOString().split('T')[0]} 11:59 PM`;
+        })() : null,
+        vehicle_no: vehicleNo || '',
+        transporter_name: transporterName || '',
+        transporter_id: transporterId || '',
+        transporter_doc_no: transporterDocNo || '',
+        transport_mode: transportMode || 'Road',
+        approx_distance: parseFloat(approxDistance) || 0,
+        supply_type: supplyType || 'Outward',
+        sub_type: subType || 'Supply',
         items: items
       };
 
@@ -754,6 +800,179 @@ export default function CreateInvoiceModal({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* E-Way Bill & Transport Section (ई-वे बिल ऑप्शन) */}
+          <div className={`p-4 rounded-xl border transition-all ${
+            enableEwayBill 
+              ? 'bg-emerald-50/70 border-emerald-300 ring-2 ring-emerald-100 shadow-xs' 
+              : 'bg-slate-50 border-slate-200'
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <label className="flex items-center space-x-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={enableEwayBill}
+                  onChange={(e) => setEnableEwayBill(e.target.checked)}
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                />
+                <div className="flex items-center space-x-2">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${enableEwayBill ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                    <Truck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-bold text-slate-900">
+                        ⚡ Generate E-Way Bill with this Bill (साथ में ई-वे बिल बनाएं)
+                      </span>
+                      {grandTotal >= 50000 && (
+                        <span className="text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.2 rounded-full animate-pulse">
+                          GST: ₹50,000+ Required
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Auto-creates Part A & Part B for transport checkposts and includes printable E-Way copy.
+                    </p>
+                  </div>
+                </div>
+              </label>
+
+              {!enableEwayBill && grandTotal >= 50000 && (
+                <button
+                  type="button"
+                  onClick={() => setEnableEwayBill(true)}
+                  className="text-xs font-bold text-emerald-700 bg-white border border-emerald-300 hover:bg-emerald-50 px-3 py-1 rounded-lg transition shrink-0"
+                >
+                  + Turn On E-Way Bill
+                </button>
+              )}
+            </div>
+
+            {enableEwayBill && (
+              <div className="mt-4 pt-3.5 border-t border-emerald-200 space-y-3 animate-in fade-in duration-150">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-bold text-slate-800">
+                        E-Way Bill No. (12 Digit) *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setEwayBillNo(generateEwayBillNo())}
+                        title="Re-generate number"
+                        className="text-[10px] text-emerald-700 hover:text-emerald-900 flex items-center space-x-0.5"
+                      >
+                        <RefreshCw className="w-2.5 h-2.5" />
+                        <span>Regen</span>
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={ewayBillNo}
+                      onChange={(e) => setEwayBillNo(e.target.value)}
+                      placeholder="e.g. 2410 8923 7192"
+                      className="w-full text-xs font-mono font-bold text-emerald-950 border border-emerald-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-emerald-500"
+                      required={enableEwayBill}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                      Vehicle No. (गाड़ी नंबर) *
+                    </label>
+                    <input
+                      type="text"
+                      value={vehicleNo}
+                      onChange={(e) => setVehicleNo(e.target.value.toUpperCase())}
+                      placeholder="e.g. BR-06-GB-4592"
+                      className="w-full text-xs font-mono font-bold uppercase border border-emerald-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                      Approx Distance (दूरी KM)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="1"
+                        value={approxDistance}
+                        onChange={(e) => setApproxDistance(e.target.value)}
+                        placeholder="85"
+                        className="w-full text-xs font-bold border border-emerald-300 rounded-lg p-2 bg-white pr-9 focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 font-bold">
+                        KM
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                      Transport Mode
+                    </label>
+                    <select
+                      value={transportMode}
+                      onChange={(e) => setTransportMode(e.target.value)}
+                      className="w-full text-xs font-medium border border-emerald-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="Road">1. Road (सड़क मार्ग)</option>
+                      <option value="Rail">2. Rail (रेल)</option>
+                      <option value="Air">3. Air (हवाई)</option>
+                      <option value="Ship">4. Ship (जल मार्ग)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                      Transporter Name / Company
+                    </label>
+                    <input
+                      type="text"
+                      value={transporterName}
+                      onChange={(e) => setTransporterName(e.target.value)}
+                      placeholder="e.g. VRL Logistics / SafeXpress / Self"
+                      className="w-full text-xs border border-emerald-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                      Transporter ID / GSTIN
+                    </label>
+                    <input
+                      type="text"
+                      value={transporterId}
+                      onChange={(e) => setTransporterId(e.target.value.toUpperCase())}
+                      placeholder="e.g. 10AAACB1234A1Z1"
+                      className="w-full text-xs font-mono uppercase border border-emerald-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-800 mb-1">
+                      Transporter Doc / LR / RR No.
+                    </label>
+                    <input
+                      type="text"
+                      value={transporterDocNo}
+                      onChange={(e) => setTransporterDocNo(e.target.value)}
+                      placeholder="e.g. LR-88214"
+                      className="w-full text-xs font-mono border border-emerald-300 rounded-lg p-2 bg-white focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-emerald-800 bg-emerald-100/70 p-2 rounded-lg flex items-center justify-between font-medium">
+                  <span>✓ Official E-Way Bill copy will be auto-generated with Government format (Part A & Part B).</span>
+                  <span className="font-bold">Validity: ~1 Day per 200 KM</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Items & Barcode Scanner Section */}

@@ -147,7 +147,20 @@ function initSqliteDb(sqliteDb) {
     "ALTER TABLE company_settings ADD COLUMN industry_type TEXT",
     "ALTER TABLE company_settings ADD COLUMN registration_type TEXT",
     "ALTER TABLE company_settings ADD COLUMN website TEXT",
-    "ALTER TABLE company_settings ADD COLUMN is_active INTEGER DEFAULT 1"
+    "ALTER TABLE company_settings ADD COLUMN is_active INTEGER DEFAULT 1",
+    "ALTER TABLE company_settings ADD COLUMN logo_url TEXT",
+    "ALTER TABLE company_settings ADD COLUMN signature_url TEXT",
+    "ALTER TABLE transactions ADD COLUMN eway_bill_no TEXT",
+    "ALTER TABLE transactions ADD COLUMN eway_bill_date TEXT",
+    "ALTER TABLE transactions ADD COLUMN eway_valid_until TEXT",
+    "ALTER TABLE transactions ADD COLUMN vehicle_no TEXT",
+    "ALTER TABLE transactions ADD COLUMN transporter_name TEXT",
+    "ALTER TABLE transactions ADD COLUMN transporter_id TEXT",
+    "ALTER TABLE transactions ADD COLUMN transporter_doc_no TEXT",
+    "ALTER TABLE transactions ADD COLUMN transport_mode TEXT DEFAULT 'Road'",
+    "ALTER TABLE transactions ADD COLUMN approx_distance REAL DEFAULT 0",
+    "ALTER TABLE transactions ADD COLUMN supply_type TEXT DEFAULT 'Outward'",
+    "ALTER TABLE transactions ADD COLUMN sub_type TEXT DEFAULT 'Supply'"
   ];
   for (const colSql of newCols) {
     try { sqliteDb.exec(colSql); } catch (e) {}
@@ -444,7 +457,8 @@ function createJsonDb() {
             const [
               name, phone, email, gstin, address, upi_id, tagline, terms,
               billing_address, city, state, pincode, is_gst_registered,
-              business_type, industry_type, registration_type, website, is_active
+              business_type, industry_type, registration_type, website, is_active,
+              logo_url, signature_url
             ] = params;
             const newCompany = {
               id: newId,
@@ -465,7 +479,9 @@ function createJsonDb() {
               industry_type: industry_type || 'General Trading',
               registration_type: registration_type || 'Proprietorship',
               website: website || '',
-              is_active: is_active !== undefined ? is_active : 1
+              is_active: is_active !== undefined ? is_active : 1,
+              logo_url: logo_url || '',
+              signature_url: signature_url || ''
             };
             if (newCompany.is_active) {
               (store.company_settings || []).forEach(c => c.is_active = 0);
@@ -494,7 +510,7 @@ function createJsonDb() {
             if (typeof params[0] === 'object' && params[0] !== null) {
               Object.assign(activeCompany, params[0]);
             } else {
-              const [name, phone, email, gstin, address, upi_id, tagline, terms, billing_address, city, state, pincode, is_gst_registered, business_type, industry_type, registration_type, website] = params;
+              const [name, phone, email, gstin, address, upi_id, tagline, terms, billing_address, city, state, pincode, is_gst_registered, business_type, industry_type, registration_type, website, logo_url, signature_url] = params;
               if (name !== undefined) activeCompany.name = name;
               if (phone !== undefined) activeCompany.phone = phone;
               if (email !== undefined) activeCompany.email = email;
@@ -512,6 +528,8 @@ function createJsonDb() {
               if (industry_type !== undefined) activeCompany.industry_type = industry_type;
               if (registration_type !== undefined) activeCompany.registration_type = registration_type;
               if (website !== undefined) activeCompany.website = website;
+              if (logo_url !== undefined) activeCompany.logo_url = logo_url;
+              if (signature_url !== undefined) activeCompany.signature_url = signature_url;
             }
             saveStore();
             return { changes: 1 };
@@ -675,10 +693,46 @@ function createJsonDb() {
               staff_code: finalSalesmanCode,
               staff_name: finalSalesmanName,
               staff_commission_rate: finalSalesmanRate,
-              staff_commission_amount: finalSalesmanAmt
+              staff_commission_amount: finalSalesmanAmt,
+              // E-Way Bill & Transport
+              eway_bill_no: params[35] !== undefined ? params[35] : null,
+              eway_bill_date: params[36] !== undefined ? params[36] : null,
+              eway_valid_until: params[37] !== undefined ? params[37] : null,
+              vehicle_no: params[38] !== undefined ? params[38] : '',
+              transporter_name: params[39] !== undefined ? params[39] : '',
+              transporter_id: params[40] !== undefined ? params[40] : '',
+              transporter_doc_no: params[41] !== undefined ? params[41] : '',
+              transport_mode: params[42] !== undefined ? params[42] : 'Road',
+              approx_distance: params[43] !== undefined ? parseFloat(params[43]) || 0 : 0,
+              supply_type: params[44] !== undefined ? params[44] : 'Outward',
+              sub_type: params[45] !== undefined ? params[45] : 'Supply'
             });
             saveStore();
             return { lastInsertRowid: newId };
+          }
+          if (cleanSql.includes('UPDATE transactions SET eway_bill_no = ?')) {
+            const [
+              eway_bill_no, eway_bill_date, eway_valid_until, vehicle_no,
+              transporter_name, transporter_id, transporter_doc_no,
+              transport_mode, approx_distance, supply_type, sub_type, id
+            ] = params;
+            const txn = store.transactions.find(t => t.id === Number(id));
+            if (txn) {
+              txn.eway_bill_no = eway_bill_no || null;
+              txn.eway_bill_date = eway_bill_date || null;
+              txn.eway_valid_until = eway_valid_until || null;
+              txn.vehicle_no = vehicle_no || '';
+              txn.transporter_name = transporter_name || '';
+              txn.transporter_id = transporter_id || '';
+              txn.transporter_doc_no = transporter_doc_no || '';
+              txn.transport_mode = transport_mode || 'Road';
+              txn.approx_distance = parseFloat(approx_distance) || 0;
+              txn.supply_type = supply_type || 'Outward';
+              txn.sub_type = sub_type || 'Supply';
+              saveStore();
+              return { changes: 1 };
+            }
+            return { changes: 0 };
           }
           if (cleanSql.includes('UPDATE transactions SET staff_id = ?') || cleanSql.includes('UPDATE transactions SET salesman_id = ?')) {
             const id = params[params.length - 1];
