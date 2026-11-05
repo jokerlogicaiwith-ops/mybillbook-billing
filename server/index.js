@@ -26,17 +26,25 @@ function getActiveCompanyId(req) {
     if (!isNaN(cid) && cid > 0) return cid;
   }
   try {
+    const apoorv = db.prepare("SELECT id FROM company_settings WHERE UPPER(name) LIKE '%APOORV%' LIMIT 1").get();
+    if (apoorv && apoorv.id) return Number(apoorv.id);
     const active = db.prepare('SELECT id FROM company_settings WHERE is_active = 1 LIMIT 1').get();
     if (active && active.id) return Number(active.id);
   } catch (e) {}
-  return 1;
+  return 2;
 }
 
 // 1. Company Settings & Multi-Business Management
 app.get('/api/companies', (req, res) => {
   try {
-    const companies = db.prepare('SELECT * FROM company_settings').all();
-    res.json(companies || []);
+    let companies = db.prepare('SELECT * FROM company_settings').all() || [];
+    companies.sort((a, b) => {
+      const isApoorvA = a.name && a.name.toUpperCase().includes('APOORV') ? 1 : 0;
+      const isApoorvB = b.name && b.name.toUpperCase().includes('APOORV') ? 1 : 0;
+      if (isApoorvA !== isApoorvB) return isApoorvB - isApoorvA;
+      return (b.is_active || 0) - (a.is_active || 0);
+    });
+    res.json(companies);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

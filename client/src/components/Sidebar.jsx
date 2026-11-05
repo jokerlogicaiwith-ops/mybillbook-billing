@@ -62,7 +62,13 @@ export default function Sidebar({
       const res = await fetch('/api/companies');
       const data = await res.json();
       if (Array.isArray(data)) {
-        setCompaniesList(data);
+        const sorted = [...data].sort((a, b) => {
+          const isApoorvA = a.name && a.name.toUpperCase().includes('APOORV') ? 1 : 0;
+          const isApoorvB = b.name && b.name.toUpperCase().includes('APOORV') ? 1 : 0;
+          if (isApoorvA !== isApoorvB) return isApoorvB - isApoorvA;
+          return (b.is_active || 0) - (a.is_active || 0);
+        });
+        setCompaniesList(sorted);
       }
     } catch (err) {
       console.error('Error fetching companies in Sidebar:', err);
@@ -139,28 +145,49 @@ export default function Sidebar({
     <>
     <aside className="w-64 bg-[#111625] text-slate-300 flex flex-col h-screen fixed left-0 top-0 select-none border-r border-slate-800/90 z-30 font-sans">
       {/* 1. Business Header matching screenshot with Switcher Dropdown */}
-      <div className="p-4 border-b border-slate-800/60 relative">
-        <div 
-          onClick={() => {
-            fetchCompanies();
-            setCompanyDropdownOpen(!companyDropdownOpen);
-          }}
-          className="flex items-center justify-between cursor-pointer p-1 -m-1 rounded-xl hover:bg-slate-800/40 transition group"
-        >
-          <div className="flex items-center space-x-3 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-[#1d4ed8] text-white font-bold flex items-center justify-center text-lg shadow-sm shrink-0">
-              {company?.name ? company.name.charAt(0).toUpperCase() : 'V'}
+      <div className="p-3 border-b border-slate-800/60 relative">
+        <div className="flex items-center justify-between gap-1.5 p-1 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition">
+          {/* Company Details (Click to toggle company switcher dropdown) */}
+          <div 
+            onClick={() => {
+              fetchCompanies();
+              setCompanyDropdownOpen(!companyDropdownOpen);
+            }}
+            className="flex items-center space-x-2.5 min-w-0 flex-1 cursor-pointer group p-1 rounded-lg hover:bg-slate-800/50 transition"
+            title="Click to switch business"
+          >
+            <div className="w-9 h-9 rounded-full bg-[#1d4ed8] text-white font-bold flex items-center justify-center text-base shadow-sm shrink-0">
+              {company?.name ? company.name.charAt(0).toUpperCase() : 'A'}
             </div>
-            <div className="overflow-hidden min-w-0">
-              <h2 className="font-semibold text-white text-sm tracking-wide truncate group-hover:text-blue-200">
-                {company?.name || 'VSRM COMPUTER CLASSES'}
-              </h2>
-              <p className="text-xs text-slate-400 font-mono truncate">
-                {company?.phone || '8936863035'}
+            <div className="overflow-hidden min-w-0 flex-1">
+              <div className="flex items-center space-x-1">
+                <h2 className="font-semibold text-white text-xs tracking-wide truncate group-hover:text-blue-200">
+                  {company?.name || 'APOORV'}
+                </h2>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform shrink-0 ${companyDropdownOpen ? 'rotate-180 text-white' : ''}`} />
+              </div>
+              <p className="text-[11px] text-slate-400 font-mono truncate">
+                {company?.phone || '8130140936'}
               </p>
             </div>
           </div>
-          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ml-1.5 ${companyDropdownOpen ? 'rotate-180 text-white' : ''}`} />
+
+          {/* Settings ⚙️ button matching screenshot */}
+          <button
+            type="button"
+            title="Business & Invoice Settings (सेटिंग्स)"
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveTab('settings');
+            }}
+            className={`p-2 rounded-lg border transition shrink-0 cursor-pointer ${
+              activeTab === 'settings' 
+                ? 'bg-blue-600 text-white border-blue-500 shadow-sm' 
+                : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700 border-slate-700/80'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Business Switcher Dropdown */}
@@ -191,19 +218,19 @@ export default function Sidebar({
                     </button>
 
                     <div className="flex items-center space-x-1 shrink-0">
-                      {isActive && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                      {isActive && <Check className="w-3.5 h-3.5 text-blue-600 mr-1" />}
                       <button
                         type="button"
-                        title="Edit Business Name & Settings (पूरा सेटिंग्स पेज खोलें)"
+                        title="Business & Invoice Settings (सेटिंग्स)"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleSwitchCompany(c.id);
                           setActiveTab('settings');
                           setCompanyDropdownOpen(false);
                         }}
-                        className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-md transition cursor-pointer"
+                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-md transition cursor-pointer"
                       >
-                        <Pencil className="w-3.5 h-3.5" />
+                        <Settings className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>

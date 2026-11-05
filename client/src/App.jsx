@@ -53,6 +53,12 @@ export default function App() {
   const [selectedTxnId, setSelectedTxnId] = useState(null);
 
   useEffect(() => {
+    try {
+      if (localStorage.getItem('mybillbook_apoorv_default_set_v1') !== 'true') {
+        localStorage.setItem('mybillbook_active_company_id', '2');
+        localStorage.setItem('mybillbook_apoorv_default_set_v1', 'true');
+      }
+    } catch (e) {}
     fetchCompany();
     fetchDashboard();
   }, []);
