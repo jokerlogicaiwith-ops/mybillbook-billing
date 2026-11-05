@@ -169,6 +169,7 @@ export default function SettingsView({
 
   const handleSwitchCompany = async (companyId) => {
     try {
+      localStorage.setItem('mybillbook_active_company_id', companyId.toString());
       const res = await fetch(`/api/companies/${companyId}/activate`, {
         method: 'PUT'
       });

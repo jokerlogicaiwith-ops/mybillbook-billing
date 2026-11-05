@@ -61,10 +61,25 @@ export default function App() {
     try {
       const res = await fetch('/api/company');
       const data = await res.json();
-      setCompany(data);
+      if (data && data.id) {
+        setCompany(data);
+        try {
+          localStorage.setItem('mybillbook_active_company_id', String(data.id));
+        } catch (e) {}
+      }
     } catch (err) {
       console.error('Failed to load company profile', err);
     }
+  };
+
+  const handleCompanySwitch = async (newCompanyId) => {
+    if (newCompanyId) {
+      try {
+        localStorage.setItem('mybillbook_active_company_id', String(newCompanyId));
+      } catch (e) {}
+    }
+    await fetchCompany();
+    await fetchDashboard();
   };
 
   const fetchDashboard = async () => {
@@ -203,6 +218,7 @@ export default function App() {
         company={company}
         onRefreshCompany={fetchCompany}
         onRefreshDashboard={fetchDashboard}
+        onSwitchCompany={handleCompanySwitch}
         currentUser={currentUser}
         onOpenLoginModal={() => setIsLoginModalOpen(true)}
       />
@@ -224,6 +240,7 @@ export default function App() {
         <main className={`flex-1 ${activeTab === 'sales' || activeTab === 'items' || activeTab === 'purchases' ? 'p-0' : 'pb-16'}`}>
           {activeTab === 'dashboard' && (
             <Dashboard 
+              key={`dash-${company?.id || 1}`}
               dashboardData={dashboardData}
               loading={loading}
               onRefresh={fetchDashboard}
@@ -235,12 +252,14 @@ export default function App() {
 
           {activeTab === 'parties' && (
             <PartiesView 
+              key={`parties-${company?.id || 1}`}
               onOpenInvoiceModal={handleOpenInvoiceModal}
             />
           )}
 
           {(activeTab === 'staff' || activeTab === 'manage-users' || activeTab === 'staff-payroll') && (
             <StaffView 
+              key={`staff-${company?.id || 1}`}
               onOpenInvoiceModal={handleOpenInvoiceModal}
               onViewInvoice={handleViewInvoice}
               onSwitchUser={handleSwitchUser}
@@ -249,6 +268,7 @@ export default function App() {
 
           {activeTab === 'staff-portal' && (
             <StaffPortalView 
+              key={`portal-${company?.id || 1}`}
               currentUser={currentUser}
               onOpenInvoiceModal={handleOpenInvoiceModal}
               onViewInvoice={handleViewInvoice}
@@ -258,6 +278,7 @@ export default function App() {
 
           {activeTab === 'items' && (
             <ItemsView 
+              key={`items-${company?.id || 1}`}
               subTab={itemsSubTab}
               onSelectSubTab={setItemsSubTab}
               onOpenInvoiceModal={handleOpenInvoiceModal}
@@ -266,6 +287,7 @@ export default function App() {
 
           {activeTab === 'sales' && (
             <SalesInvoicesView 
+              key={`sales-${company?.id || 1}`}
               subTab={salesSubTab}
               onSelectSubTab={setSalesSubTab}
               onOpenInvoiceModal={handleOpenInvoiceModal}
@@ -275,6 +297,7 @@ export default function App() {
 
           {activeTab === 'purchases' && (
             <PurchasesView 
+              key={`purchases-${company?.id || 1}`}
               subTab={purchasesSubTab}
               onSelectSubTab={setPurchasesSubTab}
               onOpenInvoiceModal={handleOpenInvoiceModal}
@@ -284,17 +307,14 @@ export default function App() {
 
           {activeTab === 'cash-bank' && (
             <div className="p-6 max-w-5xl mx-auto space-y-6">
-              <h2 className="text-xl font-bold text-slate-900">Cash & Bank Accounts</h2>
+              <h2 className="text-xl font-bold text-slate-900">Cash & Bank Accounts ({company?.name || 'Active Business'})</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-white border rounded-xl p-5 shadow-2xs">
-                  <span className="text-xs font-bold text-slate-500 uppercase">Cash Drawer / Peti</span>
-                  <div className="text-2xl font-black text-slate-900 mt-2">₹45,805</div>
-                  <p className="text-xs text-slate-400 mt-1">Physical cash available in shop/office</p>
-                </div>
-                <div className="bg-white border rounded-xl p-5 shadow-2xs">
-                  <span className="text-xs font-bold text-slate-500 uppercase">State Bank of India (Current A/C)</span>
-                  <div className="text-2xl font-black text-emerald-600 mt-2">₹1,69,000</div>
-                  <p className="text-xs text-slate-400 mt-1 font-mono">A/C: 38920199281 | IFSC: SBIN0000123</p>
+                  <span className="text-xs font-bold text-slate-500 uppercase">Available Liquid Balance</span>
+                  <div className="text-2xl font-black text-emerald-600 mt-2">
+                    ₹{(dashboardData?.totalBank || 0).toLocaleString('en-IN')}
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">Cash in hand & Bank accounts for {company?.name}</p>
                 </div>
               </div>
             </div>
@@ -302,22 +322,35 @@ export default function App() {
 
           {activeTab === 'reports' && (
             <div className="p-6 max-w-5xl mx-auto space-y-6">
-              <h2 className="text-xl font-bold text-slate-900">Business Reports</h2>
+              <h2 className="text-xl font-bold text-slate-900">Business Reports ({company?.name || 'Active Business'})</h2>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-white p-5 rounded-xl border">
-                  <span className="text-xs font-bold text-slate-500 uppercase">Daybook / Daily Sales</span>
-                  <div className="text-xl font-black text-slate-900 mt-2">₹53,100</div>
+                  <span className="text-xs font-bold text-slate-500 uppercase">Total Receivables (To Collect)</span>
+                  <div className="text-xl font-black text-emerald-600 mt-2">
+                    ₹{(dashboardData?.toCollect || 0).toLocaleString('en-IN')}
+                  </div>
                 </div>
                 <div className="bg-white p-5 rounded-xl border">
-                  <span className="text-xs font-bold text-slate-500 uppercase">Total Receivables</span>
-                  <div className="text-xl font-black text-emerald-600 mt-2">₹30,96,016</div>
+                  <span className="text-xs font-bold text-slate-500 uppercase">Total Payables (To Pay)</span>
+                  <div className="text-xl font-black text-red-500 mt-2">
+                    ₹{(dashboardData?.toPay || 0).toLocaleString('en-IN')}
+                  </div>
                 </div>
                 <div className="bg-white p-5 rounded-xl border">
-                  <span className="text-xs font-bold text-slate-500 uppercase">Total Payables</span>
-                  <div className="text-xl font-black text-red-500 mt-2">₹25,92,460</div>
+                  <span className="text-xs font-bold text-slate-500 uppercase">Cash & Bank Balance</span>
+                  <div className="text-xl font-black text-slate-900 mt-2">
+                    ₹{(dashboardData?.totalBank || 0).toLocaleString('en-IN')}
+                  </div>
                 </div>
               </div>
             </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <SettingsView 
+              key={`settings-${company?.id || 1}`}
+              onSaveCompany={fetchCompany} 
+            />
           )}
 
 
@@ -351,6 +384,7 @@ export default function App() {
         onClose={() => setIsInvoiceModalOpen(false)}
         onSuccess={handleInvoiceSuccess}
         currentUser={currentUser}
+        company={company}
       />
 
       {/* Printable Invoice / PDF Modal */}

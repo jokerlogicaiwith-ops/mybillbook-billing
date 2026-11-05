@@ -160,7 +160,12 @@ function initSqliteDb(sqliteDb) {
     "ALTER TABLE transactions ADD COLUMN transport_mode TEXT DEFAULT 'Road'",
     "ALTER TABLE transactions ADD COLUMN approx_distance REAL DEFAULT 0",
     "ALTER TABLE transactions ADD COLUMN supply_type TEXT DEFAULT 'Outward'",
-    "ALTER TABLE transactions ADD COLUMN sub_type TEXT DEFAULT 'Supply'"
+    "ALTER TABLE transactions ADD COLUMN sub_type TEXT DEFAULT 'Supply'",
+    "ALTER TABLE parties ADD COLUMN company_id INTEGER DEFAULT 1",
+    "ALTER TABLE items ADD COLUMN company_id INTEGER DEFAULT 1",
+    "ALTER TABLE transactions ADD COLUMN company_id INTEGER DEFAULT 1",
+    "ALTER TABLE bank_accounts ADD COLUMN company_id INTEGER DEFAULT 1",
+    "ALTER TABLE staff ADD COLUMN company_id INTEGER DEFAULT 1"
   ];
   for (const colSql of newCols) {
     try { sqliteDb.exec(colSql); } catch (e) {}
@@ -337,28 +342,66 @@ function createJsonDb() {
             return active || (store.company_settings && store.company_settings[0]) || {};
           }
           if (cleanSql.includes('SUM(current_balance) as to_collect')) {
-            const sum = store.parties.filter(p => p.current_balance > 0).reduce((acc, p) => acc + p.current_balance, 0);
+            let parties = (store.parties || []).filter(p => p.current_balance > 0);
+            if (cleanSql.includes('company_id = ?')) {
+              const cid = Number(params[params.length - 1]);
+              parties = parties.filter(p => (p.company_id || 1) === cid);
+            }
+            const sum = parties.reduce((acc, p) => acc + (p.current_balance || 0), 0);
             return { to_collect: sum };
           }
           if (cleanSql.includes('to_pay')) {
-            const sum = store.parties.filter(p => p.current_balance < 0).reduce((acc, p) => acc + Math.abs(p.current_balance), 0);
+            let parties = (store.parties || []).filter(p => p.current_balance < 0);
+            if (cleanSql.includes('company_id = ?')) {
+              const cid = Number(params[params.length - 1]);
+              parties = parties.filter(p => (p.company_id || 1) === cid);
+            }
+            const sum = parties.reduce((acc, p) => acc + Math.abs(p.current_balance || 0), 0);
             return { to_pay: sum };
           }
           if (cleanSql.includes('SUM(balance) as total_bank')) {
-            const sum = store.bank_accounts.reduce((acc, b) => acc + b.balance, 0);
+            let banks = store.bank_accounts || [];
+            if (cleanSql.includes('company_id = ?')) {
+              const cid = Number(params[params.length - 1]);
+              banks = banks.filter(b => (b.company_id || 1) === cid);
+            }
+            const sum = banks.reduce((acc, b) => acc + (b.balance || 0), 0);
             return { total_bank: sum };
           }
           if (cleanSql.includes('COUNT(*) as count FROM items WHERE stock_qty <= low_stock_limit')) {
-            return { count: store.items.filter(i => i.stock_qty <= i.low_stock_limit).length };
+            let items = store.items || [];
+            if (cleanSql.includes('company_id = ?')) {
+              const cid = Number(params[params.length - 1]);
+              items = items.filter(i => (i.company_id || 1) === cid);
+            }
+            return { count: items.filter(i => (i.stock_qty || 0) <= (i.low_stock_limit || 5)).length };
           }
           if (cleanSql.includes('COUNT(*) as count FROM items')) {
-            return { count: store.items.length };
+            let items = store.items || [];
+            if (cleanSql.includes('company_id = ?')) {
+              const cid = Number(params[params.length - 1]);
+              items = items.filter(i => (i.company_id || 1) === cid);
+            }
+            return { count: items.length };
           }
           if (cleanSql.includes('COUNT(*) as count FROM parties')) {
-            return { count: store.parties.length };
+            let parties = store.parties || [];
+            if (cleanSql.includes('company_id = ?')) {
+              const cid = Number(params[params.length - 1]);
+              parties = parties.filter(p => (p.company_id || 1) === cid);
+            }
+            return { count: parties.length };
           }
-          if (cleanSql.includes('COUNT(*) as count FROM transactions WHERE type = ?')) {
-            return { count: store.transactions.filter(t => t.type === params[0]).length };
+          if (cleanSql.includes('COUNT(*) as count FROM transactions')) {
+            let txns = store.transactions || [];
+            if (cleanSql.includes('type = ?')) {
+              txns = txns.filter(t => t.type === params[0]);
+            }
+            if (cleanSql.includes('company_id = ?')) {
+              const cid = Number(params[params.length - 1]);
+              txns = txns.filter(t => (t.company_id || 1) === cid);
+            }
+            return { count: txns.length };
           }
           if (cleanSql.includes('FROM parties WHERE id = ?')) {
             return store.parties.find(p => p.id === Number(params[0])) || null;
@@ -381,10 +424,19 @@ function createJsonDb() {
           if (cleanSql.includes('COUNT(*) as count FROM staff')) {
             return { count: (store.staff || []).length };
           }
-          if (cleanSql.includes('SUM(amount) as total FROM transactions WHERE type =')) {
-            const match = cleanSql.match(/type = '([^']+)'/);
-            const type = match ? match[1] : '';
-            const sum = store.transactions.filter(t => t.type === type).reduce((acc, t) => acc + (t.amount || 0), 0);
+          if (cleanSql.includes('SUM(amount) as total FROM transactions')) {
+            let txns = store.transactions || [];
+            if (cleanSql.includes("type = '")) {
+              const match = cleanSql.match(/type = '([^']+)'/);
+              if (match) txns = txns.filter(t => t.type === match[1]);
+            } else if (cleanSql.includes('type = ?')) {
+              txns = txns.filter(t => t.type === params[0]);
+            }
+            if (cleanSql.includes('company_id = ?')) {
+              const cid = Number(params[params.length - 1]);
+              txns = txns.filter(t => (t.company_id || 1) === cid);
+            }
+            const sum = txns.reduce((acc, t) => acc + (t.amount || 0), 0);
             return { total: sum };
           }
           return null;
@@ -403,31 +455,78 @@ function createJsonDb() {
             return store.transaction_items.filter(ti => ti.transaction_id === Number(params[0]));
           }
           if (cleanSql.includes('FROM transactions')) {
-            let list = [...store.transactions];
+            let list = [...(store.transactions || [])];
+            if (cleanSql.includes('company_id = ?')) {
+              const cid = Number(params[0]);
+              list = list.filter(t => (t.company_id || 1) === cid);
+            }
             if (cleanSql.includes("type = 'Purchase Invoices'") || cleanSql.includes("type = 'Purchase Bills'")) {
               list = list.filter(t => t.type === 'Purchase Invoices' || t.type === 'Purchase Bills');
             } else if (cleanSql.includes('type = ?')) {
-              list = list.filter(t => params.includes(t.type));
+              const typeParam = params.find(p => typeof p === 'string' && (p.includes('Sales') || p.includes('Quotation') || p.includes('Payment') || p.includes('Credit') || p.includes('Debit') || p.includes('Return') || p.includes('Challan') || p.includes('Proforma') || p.includes('Purchase')));
+              if (typeParam) list = list.filter(t => t.type === typeParam);
             }
-            if (cleanSql.includes('party_name LIKE ?')) {
+            if (cleanSql.includes('party_name LIKE ?') || cleanSql.includes('txn_no LIKE ?')) {
               const searchParam = params.find(p => String(p).startsWith('%'));
               if (searchParam) {
                 const q = String(searchParam).replace(/%/g, '').toLowerCase();
                 list = list.filter(t => (t.party_name && t.party_name.toLowerCase().includes(q)) || (t.txn_no && t.txn_no.toLowerCase().includes(q)));
               }
             }
-            return list.sort((a, b) => b.id - a.id);
+            list.sort((a, b) => b.id - a.id);
+            if (cleanSql.includes('LIMIT ?')) {
+              const limit = Number(params[params.length - 1]);
+              if (!isNaN(limit)) list = list.slice(0, limit);
+            } else if (cleanSql.includes('LIMIT 10')) {
+              list = list.slice(0, 10);
+            }
+            return list;
           }
           if (cleanSql.includes('FROM parties')) {
-            let list = [...store.parties];
-            return list.sort((a, b) => a.name.localeCompare(b.name));
+            let list = [...(store.parties || [])];
+            if (cleanSql.includes('company_id = ?')) {
+              const cid = Number(params[0]);
+              list = list.filter(p => (p.company_id || 1) === cid);
+            }
+            if (cleanSql.includes('type = ?')) {
+              const typeParam = params.find(p => p === 'customer' || p === 'vendor');
+              if (typeParam) list = list.filter(p => p.type === typeParam);
+            }
+            if (cleanSql.includes('name LIKE ?')) {
+              const searchParam = params.find(p => String(p).startsWith('%'));
+              if (searchParam) {
+                const q = String(searchParam).replace(/%/g, '').toLowerCase();
+                list = list.filter(p => (p.name && p.name.toLowerCase().includes(q)) || (p.phone && p.phone.includes(q)) || (p.gstin && p.gstin.toLowerCase().includes(q)));
+              }
+            }
+            return list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
           }
           if (cleanSql.includes('FROM items')) {
-            let list = [...store.items];
-            return list.sort((a, b) => a.name.localeCompare(b.name));
+            let list = [...(store.items || [])];
+            if (cleanSql.includes('company_id = ?')) {
+              const cid = Number(params[0]);
+              list = list.filter(i => (i.company_id || 1) === cid);
+            }
+            if (cleanSql.includes('category = ?')) {
+              const cat = params.find(p => typeof p === 'string' && !p.startsWith('%') && p !== 'all');
+              if (cat) list = list.filter(i => i.category === cat);
+            }
+            if (cleanSql.includes('name LIKE ?')) {
+              const searchParam = params.find(p => String(p).startsWith('%'));
+              if (searchParam) {
+                const q = String(searchParam).replace(/%/g, '').toLowerCase();
+                list = list.filter(i => (i.name && i.name.toLowerCase().includes(q)) || (i.item_code && i.item_code.toLowerCase().includes(q)) || (i.hsn_code && i.hsn_code.includes(q)));
+              }
+            }
+            return list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
           }
           if (cleanSql.includes('FROM bank_accounts')) {
-            return store.bank_accounts || [];
+            let list = store.bank_accounts || [];
+            if (cleanSql.includes('company_id = ?')) {
+              const cid = Number(params[0]);
+              list = list.filter(b => (b.company_id || 1) === cid);
+            }
+            return list;
           }
           if (cleanSql.includes('FROM company_settings')) {
             return store.company_settings || [];
@@ -535,6 +634,7 @@ function createJsonDb() {
             return { changes: 1 };
           }
           if (cleanSql.includes('INSERT INTO parties')) {
+            const company_id = cleanSql.includes('company_id') ? Number(params[params.length - 1]) : 1;
             const [name, phone, email, type, gstin, address, state, opening_balance, current_balance, city, pincode] = params;
             const newId = store.parties.length ? Math.max(...store.parties.map(p => p.id)) + 1 : 1;
             store.parties.push({ 
@@ -549,15 +649,30 @@ function createJsonDb() {
               state: state || 'Bihar', 
               pincode: pincode || '', 
               opening_balance: opening_balance || 0, 
-              current_balance: current_balance || 0 
+              current_balance: current_balance || 0,
+              company_id: company_id || 1
             });
             saveStore();
             return { lastInsertRowid: newId };
           }
           if (cleanSql.includes('INSERT INTO items')) {
+            const company_id = cleanSql.includes('company_id') ? Number(params[params.length - 1]) : 1;
             const [name, item_code, hsn_code, category, unit, sale_price, purchase_price, tax_rate, stock_qty, low_stock_limit] = params;
             const newId = store.items.length ? Math.max(...store.items.map(i => i.id)) + 1 : 1;
-            store.items.push({ id: newId, name, item_code, hsn_code, category, unit, sale_price, purchase_price, tax_rate, stock_qty, low_stock_limit });
+            store.items.push({ 
+              id: newId, 
+              name, 
+              item_code, 
+              hsn_code, 
+              category, 
+              unit, 
+              sale_price, 
+              purchase_price, 
+              tax_rate, 
+              stock_qty, 
+              low_stock_limit,
+              company_id: company_id || 1
+            });
             saveStore();
             return { lastInsertRowid: newId };
           }
@@ -705,7 +820,8 @@ function createJsonDb() {
               transport_mode: params[42] !== undefined ? params[42] : 'Road',
               approx_distance: params[43] !== undefined ? parseFloat(params[43]) || 0 : 0,
               supply_type: params[44] !== undefined ? params[44] : 'Outward',
-              sub_type: params[45] !== undefined ? params[45] : 'Supply'
+              sub_type: params[45] !== undefined ? params[45] : 'Supply',
+              company_id: params[46] !== undefined ? Number(params[46]) : (cleanSql.includes('company_id') ? Number(params[params.length - 1]) : 1)
             });
             saveStore();
             return { lastInsertRowid: newId };

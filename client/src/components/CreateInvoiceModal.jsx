@@ -6,7 +6,8 @@ export default function CreateInvoiceModal({
   onClose, 
   initialType = 'Sales Invoices', 
   onSuccess,
-  currentUser
+  currentUser,
+  company
 }) {
   const [txnType, setTxnType] = useState(initialType);
   const [parties, setParties] = useState([]);
@@ -450,6 +451,7 @@ export default function CreateInvoiceModal({
         transporter_doc_no: transporterDocNo || '',
         transport_mode: transportMode || 'Road',
         approx_distance: parseFloat(approxDistance) || 0,
+        company_id: company?.id,
         supply_type: supplyType || 'Outward',
         sub_type: subType || 'Supply',
         items: items

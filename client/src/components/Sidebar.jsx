@@ -39,7 +39,8 @@ export default function Sidebar({
   purchasesSubTab = 'invoices',
   setPurchasesSubTab,
   currentUser,
-  onOpenLoginModal
+  onOpenLoginModal,
+  onSwitchCompany
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [companyDropdownOpen, setCompanyDropdownOpen] = useState(false);
@@ -70,6 +71,7 @@ export default function Sidebar({
 
   const handleSwitchCompany = async (companyId) => {
     try {
+      localStorage.setItem('mybillbook_active_company_id', companyId.toString());
       const res = await fetch(`/api/companies/${companyId}/activate`, {
         method: 'PUT'
       });
@@ -77,8 +79,12 @@ export default function Sidebar({
       if (data.success) {
         setCompanyDropdownOpen(false);
         fetchCompanies();
-        if (onRefreshCompany) onRefreshCompany();
-        if (onRefreshDashboard) onRefreshDashboard();
+        if (onSwitchCompany) {
+          onSwitchCompany(companyId);
+        } else {
+          if (onRefreshCompany) onRefreshCompany();
+          if (onRefreshDashboard) onRefreshDashboard();
+        }
       }
     } catch (err) {
       console.error('Error switching company:', err);

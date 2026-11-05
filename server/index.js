@@ -15,6 +15,23 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 const clientDistPath = path.resolve(__dirname, '../client/dist');
 app.use(express.static(clientDistPath));
 
+// Active Company Scoping Helper
+function getActiveCompanyId(req) {
+  if (req && req.headers && req.headers['x-company-id']) {
+    const cid = parseInt(req.headers['x-company-id'], 10);
+    if (!isNaN(cid) && cid > 0) return cid;
+  }
+  if (req && req.query && req.query.company_id) {
+    const cid = parseInt(req.query.company_id, 10);
+    if (!isNaN(cid) && cid > 0) return cid;
+  }
+  try {
+    const active = db.prepare('SELECT id FROM company_settings WHERE is_active = 1 LIMIT 1').get();
+    if (active && active.id) return Number(active.id);
+  } catch (e) {}
+  return 1;
+}
+
 // 1. Company Settings & Multi-Business Management
 app.get('/api/companies', (req, res) => {
   try {
@@ -27,10 +44,14 @@ app.get('/api/companies', (req, res) => {
 
 app.get('/api/company', (req, res) => {
   try {
+    const companyId = getActiveCompanyId(req);
     let company = null;
     try {
-      company = db.prepare('SELECT * FROM company_settings WHERE is_active = 1 LIMIT 1').get();
+      company = db.prepare('SELECT * FROM company_settings WHERE id = ?').get(companyId);
     } catch (e) {}
+    if (!company) {
+      company = db.prepare('SELECT * FROM company_settings WHERE is_active = 1 LIMIT 1').get();
+    }
     if (!company) {
       company = db.prepare('SELECT * FROM company_settings LIMIT 1').get();
     }
@@ -179,43 +200,46 @@ app.put('/api/company', (req, res) => {
 // 2. Dashboard Stats & Overview
 app.get('/api/dashboard', (req, res) => {
   try {
+    const companyId = getActiveCompanyId(req);
+
     // To Collect: sum of positive balances from parties (customers owing us)
     const toCollectRow = db.prepare(`
       SELECT SUM(current_balance) as to_collect 
       FROM parties 
-      WHERE current_balance > 0
-    `).get();
+      WHERE current_balance > 0 AND company_id = ?
+    `).get(companyId);
 
     // To Pay: sum of negative balances (we owe vendors)
     const toPayRow = db.prepare(`
       SELECT ABS(SUM(current_balance)) as to_pay 
       FROM parties 
-      WHERE current_balance < 0
-    `).get();
+      WHERE current_balance < 0 AND company_id = ?
+    `).get(companyId);
 
     // Total Cash & Bank
-    const bankRow = db.prepare('SELECT SUM(balance) as total_bank FROM bank_accounts').get();
+    const bankRow = db.prepare('SELECT SUM(balance) as total_bank FROM bank_accounts WHERE company_id = ?').get(companyId);
 
     // Latest Transactions (last 10)
     const latestTxns = db.prepare(`
       SELECT * FROM transactions 
+      WHERE company_id = ?
       ORDER BY date DESC, id DESC 
       LIMIT 10
-    `).all();
+    `).all(companyId);
 
     // Inventory counts
-    const itemCount = db.prepare('SELECT COUNT(*) as count FROM items').get();
-    const lowStockCount = db.prepare('SELECT COUNT(*) as count FROM items WHERE stock_qty <= low_stock_limit').get();
-    const partyCount = db.prepare('SELECT COUNT(*) as count FROM parties').get();
+    const itemCount = db.prepare('SELECT COUNT(*) as count FROM items WHERE company_id = ?').get(companyId);
+    const lowStockCount = db.prepare('SELECT COUNT(*) as count FROM items WHERE stock_qty <= low_stock_limit AND company_id = ?').get(companyId);
+    const partyCount = db.prepare('SELECT COUNT(*) as count FROM parties WHERE company_id = ?').get(companyId);
 
     res.json({
-      toCollect: toCollectRow.to_collect || 3096016, // fallback if new
-      toPay: toPayRow.to_pay || 2592460,
-      totalBank: bankRow.total_bank || 214805,
-      latestTransactions: latestTxns,
-      itemCount: itemCount.count,
-      lowStockCount: lowStockCount.count,
-      partyCount: partyCount.count,
+      toCollect: toCollectRow?.to_collect || 0,
+      toPay: toPayRow?.to_pay || 0,
+      totalBank: bankRow?.total_bank || 0,
+      latestTransactions: latestTxns || [],
+      itemCount: itemCount?.count || 0,
+      lowStockCount: lowStockCount?.count || 0,
+      partyCount: partyCount?.count || 0,
       lastUpdated: new Date().toLocaleString('en-IN', {
         day: '2-digit',
         month: 'short',
@@ -233,9 +257,10 @@ app.get('/api/dashboard', (req, res) => {
 // 3. Parties APIs
 app.get('/api/parties', (req, res) => {
   try {
+    const companyId = getActiveCompanyId(req);
     const { type, search } = req.query;
-    let query = 'SELECT * FROM parties WHERE 1=1';
-    const params = [];
+    let query = 'SELECT * FROM parties WHERE company_id = ?';
+    const params = [companyId];
 
     if (type && type !== 'all') {
       query += ' AND type = ?';
@@ -256,12 +281,13 @@ app.get('/api/parties', (req, res) => {
 
 app.post('/api/parties', (req, res) => {
   try {
-    const { name, phone, email, type, gstin, address, state, opening_balance } = req.body;
+    const companyId = req.body.company_id ? Number(req.body.company_id) : getActiveCompanyId(req);
+    const { name, phone, email, type, gstin, address, state, opening_balance, city, pincode } = req.body;
     const opBal = parseFloat(opening_balance) || 0;
     const info = db.prepare(`
-      INSERT INTO parties (name, phone, email, type, gstin, address, state, opening_balance, current_balance)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(name, phone || '', email || '', type || 'customer', gstin || '', address || '', state || 'Bihar', opBal, opBal);
+      INSERT INTO parties (name, phone, email, type, gstin, address, state, opening_balance, current_balance, city, pincode, company_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(name, phone || '', email || '', type || 'customer', gstin || '', address || '', state || 'Bihar', opBal, opBal, city || '', pincode || '', companyId);
 
     res.json({ id: info.lastInsertRowid, success: true });
   } catch (err) {
@@ -289,10 +315,13 @@ app.get('/api/parties/:id', (req, res) => {
 // 4. Items / Inventory APIs
 app.get('/api/items/stats', (req, res) => {
   try {
-    const items = db.prepare('SELECT * FROM items').all();
+    const companyId = getActiveCompanyId(req);
+    const items = db.prepare('SELECT * FROM items WHERE company_id = ?').all(companyId);
+    const stockValue = items.reduce((acc, item) => acc + ((item.stock_qty || 0) * (item.purchase_price || item.sale_price || 0)), 0);
+    const lowStockCount = items.filter(item => (item.stock_qty || 0) <= (item.low_stock_limit || 5)).length;
     res.json({
-      stockValue: 2030954.24,
-      lowStockCount: 0,
+      stockValue: parseFloat(stockValue.toFixed(2)),
+      lowStockCount,
       totalItems: items.length
     });
   } catch (err) {
@@ -302,9 +331,10 @@ app.get('/api/items/stats', (req, res) => {
 
 app.get('/api/items', (req, res) => {
   try {
+    const companyId = getActiveCompanyId(req);
     const { search, category, lowStock } = req.query;
-    let query = 'SELECT * FROM items WHERE 1=1';
-    const params = [];
+    let query = 'SELECT * FROM items WHERE company_id = ?';
+    const params = [companyId];
 
     if (category && category !== 'all') {
       query += ' AND category = ?';
@@ -318,7 +348,7 @@ app.get('/api/items', (req, res) => {
     query += ' ORDER BY name ASC';
     let items = db.prepare(query).all(...params);
     if (lowStock === 'true') {
-      items = items.filter(i => (i.stock_qty || 0) <= 0);
+      items = items.filter(i => (i.stock_qty || 0) <= (i.low_stock_limit || 5));
     }
     res.json(items);
   } catch (err) {
@@ -328,10 +358,11 @@ app.get('/api/items', (req, res) => {
 
 app.post('/api/items', (req, res) => {
   try {
+    const companyId = req.body.company_id ? Number(req.body.company_id) : getActiveCompanyId(req);
     const { name, item_code, hsn_code, category, unit, sale_price, purchase_price, tax_rate, stock_qty, low_stock_limit } = req.body;
     const info = db.prepare(`
-      INSERT INTO items (name, item_code, hsn_code, category, unit, sale_price, purchase_price, tax_rate, stock_qty, low_stock_limit)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO items (name, item_code, hsn_code, category, unit, sale_price, purchase_price, tax_rate, stock_qty, low_stock_limit, company_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       name,
       item_code || '',
@@ -342,7 +373,8 @@ app.post('/api/items', (req, res) => {
       parseFloat(purchase_price) || 0,
       parseFloat(tax_rate) || 0,
       parseFloat(stock_qty) || 0,
-      parseFloat(low_stock_limit) || 5
+      parseFloat(low_stock_limit) || 5,
+      companyId
     );
 
     res.json({ id: info.lastInsertRowid, success: true });
@@ -661,8 +693,9 @@ app.delete('/api/staff/:id', (req, res) => {
 // 5. Transactions / Invoices APIs
 app.get('/api/sales/stats', (req, res) => {
   try {
+    const companyId = getActiveCompanyId(req);
     const requestedType = req.query.type || 'Sales Invoices';
-    const txns = db.prepare("SELECT * FROM transactions WHERE type = ?").all(requestedType);
+    const txns = db.prepare("SELECT * FROM transactions WHERE company_id = ? AND type = ?").all(companyId, requestedType);
     const typeTxns = txns.filter(t => t.type === requestedType);
 
     if (requestedType === 'Quotation / Estimate') {
@@ -756,13 +789,13 @@ app.get('/api/sales/stats', (req, res) => {
 // Purchases Stats API matching MyBillBook
 app.get('/api/purchases/stats', (req, res) => {
   try {
+    const companyId = getActiveCompanyId(req);
     const requestedType = req.query.type || 'Purchase Invoices';
+    const allTxns = db.prepare("SELECT * FROM transactions WHERE company_id = ?").all(companyId);
     let txns = [];
     if (requestedType === 'Purchase Invoices') {
-      const allTxns = db.prepare("SELECT * FROM transactions").all();
       txns = allTxns.filter(t => t.type === 'Purchase Invoices' || t.type === 'Purchase Bills');
     } else {
-      const allTxns = db.prepare("SELECT * FROM transactions").all();
       txns = allTxns.filter(t => t.type === requestedType);
     }
 
@@ -785,9 +818,10 @@ app.get('/api/purchases/stats', (req, res) => {
 
 app.get('/api/transactions', (req, res) => {
   try {
+    const companyId = getActiveCompanyId(req);
     const { type, search, limit } = req.query;
-    let query = 'SELECT * FROM transactions WHERE 1=1';
-    const params = [];
+    let query = 'SELECT * FROM transactions WHERE company_id = ?';
+    const params = [companyId];
 
     if (type && type !== 'all') {
       if (type === 'Purchase Invoices') {
@@ -844,18 +878,29 @@ app.get('/api/transactions/:id', (req, res) => {
       };
     }
     let company = null;
+    const txnCompanyId = txn.company_id || getActiveCompanyId(req);
     try {
-      company = db.prepare('SELECT * FROM company_settings WHERE is_active = 1 LIMIT 1').get();
+      company = db.prepare('SELECT * FROM company_settings WHERE id = ?').get(txnCompanyId);
     } catch (e) {}
+    if (!company) {
+      try {
+        company = db.prepare('SELECT * FROM company_settings WHERE is_active = 1 LIMIT 1').get();
+      } catch (e) {}
+    }
     if (!company) {
       company = db.prepare('SELECT * FROM company_settings LIMIT 1').get();
     }
     let bankAccounts = [];
     try {
-      bankAccounts = db.prepare('SELECT * FROM bank_accounts').all() || [];
+      bankAccounts = db.prepare('SELECT * FROM bank_accounts WHERE company_id = ?').all(txnCompanyId) || [];
     } catch(e) {}
+    if (bankAccounts.length === 0) {
+      try {
+        bankAccounts = db.prepare('SELECT * FROM bank_accounts').all() || [];
+      } catch(e) {}
+    }
     const primaryBank = bankAccounts.find(b => b.account_number && b.account_number !== 'CASH') || bankAccounts[0] || {
-      name: company?.name || 'AVYAAN',
+      name: company?.name || 'VSRM',
       account_number: '761801010050603',
       ifsc: 'UBIN0576182',
       bank_name: 'Union Bank of India',
@@ -1123,12 +1168,14 @@ app.post('/api/transactions', (req, res) => {
     const finalAccountantRate = parseFloat(accountant_commission_rate) || 0;
     const finalAccountantAmt = (totalAmt * finalAccountantRate) / 100;
 
+    const companyId = req.body.company_id ? Number(req.body.company_id) : getActiveCompanyId(req);
+
     // Auto-generate txn_no if blank
     let generatedNo = txn_no;
     if (!generatedNo) {
-      const countRow = db.prepare('SELECT COUNT(*) as count FROM transactions WHERE type = ?').get(type);
-      const prefix = type === 'Sales Invoices' ? 'INV' : (type === 'Quotation / Estimate' ? 'EST' : (type === 'Purchase Bills' ? 'PUR' : 'TXN'));
-      generatedNo = `${prefix}-${Date.now().toString().slice(-4)}-${countRow.count + 1}`;
+      const countRow = db.prepare('SELECT COUNT(*) as count FROM transactions WHERE type = ? AND company_id = ?').get(type, companyId);
+      const prefix = companyId === 1 ? 'VSRM' : 'A/SL';
+      generatedNo = `${prefix}-${Date.now().toString().slice(-4)}-${(countRow?.count || 0) + 1}`;
     }
 
     // Insert transaction with party snapshot, staff attribution, and E-Way Bill details
@@ -1142,8 +1189,8 @@ app.post('/api/transactions', (req, res) => {
         accountant_id, accountant_code, accountant_name, accountant_commission_rate, accountant_commission_amount,
         eway_bill_no, eway_bill_date, eway_valid_until, vehicle_no,
         transporter_name, transporter_id, transporter_doc_no, transport_mode,
-        approx_distance, supply_type, sub_type
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        approx_distance, supply_type, sub_type, company_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = insertTxnStmt.run(
@@ -1196,7 +1243,8 @@ app.post('/api/transactions', (req, res) => {
       transport_mode || 'Road',
       parseFloat(approx_distance) || 0,
       supply_type || 'Outward',
-      sub_type || 'Supply'
+      sub_type || 'Supply',
+      companyId
     );
 
     const transactionId = result.lastInsertRowid;
@@ -1269,8 +1317,12 @@ app.post('/api/transactions', (req, res) => {
     }
 
     // Update Cash/Bank account if paid amount > 0
+    // Update cash/bank balance for this company
     if (paidAmt > 0) {
-      const bankAcct = db.prepare('SELECT id FROM bank_accounts LIMIT 1').get();
+      let bankAcct = db.prepare('SELECT id FROM bank_accounts WHERE company_id = ? LIMIT 1').get(companyId);
+      if (!bankAcct) {
+        bankAcct = db.prepare('SELECT id FROM bank_accounts LIMIT 1').get();
+      }
       if (bankAcct) {
         if (type === 'Sales Invoices' || type === 'Payment In') {
           db.prepare('UPDATE bank_accounts SET balance = balance + ? WHERE id = ?').run(paidAmt, bankAcct.id);
@@ -1313,16 +1365,17 @@ app.get('/api/qrcode', async (req, res) => {
 // 7. Reports Summary
 app.get('/api/reports/summary', (req, res) => {
   try {
-    const salesTotal = db.prepare("SELECT SUM(amount) as total FROM transactions WHERE type = 'Sales Invoices'").get();
-    const purchaseTotal = db.prepare("SELECT SUM(amount) as total FROM transactions WHERE type = 'Purchase Bills'").get();
-    const paymentsIn = db.prepare("SELECT SUM(amount) as total FROM transactions WHERE type = 'Payment In'").get();
-    const quotations = db.prepare("SELECT SUM(amount) as total FROM transactions WHERE type = 'Quotation / Estimate'").get();
+    const companyId = getActiveCompanyId(req);
+    const salesTotal = db.prepare("SELECT SUM(amount) as total FROM transactions WHERE type = 'Sales Invoices' AND company_id = ?").get(companyId);
+    const purchaseTotal = db.prepare("SELECT SUM(amount) as total FROM transactions WHERE type = 'Purchase Bills' AND company_id = ?").get(companyId);
+    const paymentsIn = db.prepare("SELECT SUM(amount) as total FROM transactions WHERE type = 'Payment In' AND company_id = ?").get(companyId);
+    const quotations = db.prepare("SELECT SUM(amount) as total FROM transactions WHERE type = 'Quotation / Estimate' AND company_id = ?").get(companyId);
 
     res.json({
-      totalSales: salesTotal.total || 0,
-      totalPurchases: purchaseTotal.total || 0,
-      totalPaymentsIn: paymentsIn.total || 0,
-      totalQuotations: quotations.total || 0
+      totalSales: salesTotal?.total || 0,
+      totalPurchases: purchaseTotal?.total || 0,
+      totalPaymentsIn: paymentsIn?.total || 0,
+      totalQuotations: quotations?.total || 0
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
