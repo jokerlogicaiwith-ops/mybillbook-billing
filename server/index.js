@@ -197,6 +197,79 @@ app.put('/api/company', (req, res) => {
   }
 });
 
+const defaultInvoiceSettings = {
+  theme: 'Stylish',
+  theme_color: '#5c5be5',
+  show_party_balance: true,
+  enable_free_qty: true,
+  show_item_description: true,
+  show_alternate_unit: false,
+  show_phone_number: true,
+  show_time: false,
+  price_history: false,
+  auto_apply_luxury_theme: true,
+  invoice_title: 'TAX INVOICE',
+  invoice_prefix: 'INV-',
+  show_due_date: true,
+  show_po_details: true,
+  show_eway_bill: true,
+  show_vehicle_no: true,
+  show_shipping_address: true,
+  show_party_gstin: true,
+  show_party_pan: true,
+  show_place_of_supply: true,
+  show_party_phone: true,
+  show_hsn: true,
+  show_batch: false,
+  show_serial: false,
+  show_mrp: false,
+  show_discount: true,
+  show_tax: true,
+  show_free_quantity: false,
+  show_cess: false,
+  show_terms: true,
+  show_bank_details: true,
+  show_upi_qr: true,
+  show_signature: true,
+  show_greeting: true,
+  greeting_text: 'Thank you for your business!',
+  show_tagline: true
+};
+
+app.get('/api/company/invoice-settings', (req, res) => {
+  try {
+    const companyId = getActiveCompanyId(req);
+    const comp = db.prepare('SELECT * FROM company_settings WHERE id = ?').get(companyId) || {};
+    let settings = comp.invoice_settings;
+    if (typeof settings === 'string') {
+      try { settings = JSON.parse(settings); } catch (e) { settings = null; }
+    }
+    res.json({ success: true, settings: { ...defaultInvoiceSettings, ...(settings || {}) } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/company/invoice-settings', (req, res) => {
+  try {
+    const companyId = getActiveCompanyId(req);
+    const newSettings = req.body || {};
+    const comp = db.prepare('SELECT * FROM company_settings WHERE id = ?').get(companyId) || {};
+    let currentSettings = comp.invoice_settings;
+    if (typeof currentSettings === 'string') {
+      try { currentSettings = JSON.parse(currentSettings); } catch (e) { currentSettings = null; }
+    }
+    const merged = { ...defaultInvoiceSettings, ...(currentSettings || {}), ...newSettings };
+    db.prepare('UPDATE company_settings SET invoice_settings = ? WHERE id = ?').run(
+      JSON.stringify(merged),
+      companyId
+    );
+    res.json({ success: true, settings: merged });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 2. Dashboard Stats & Overview
 app.get('/api/dashboard', (req, res) => {
   try {

@@ -165,7 +165,8 @@ function initSqliteDb(sqliteDb) {
     "ALTER TABLE items ADD COLUMN company_id INTEGER DEFAULT 1",
     "ALTER TABLE transactions ADD COLUMN company_id INTEGER DEFAULT 1",
     "ALTER TABLE bank_accounts ADD COLUMN company_id INTEGER DEFAULT 1",
-    "ALTER TABLE staff ADD COLUMN company_id INTEGER DEFAULT 1"
+    "ALTER TABLE staff ADD COLUMN company_id INTEGER DEFAULT 1",
+    "ALTER TABLE company_settings ADD COLUMN invoice_settings TEXT"
   ];
   for (const colSql of newCols) {
     try { sqliteDb.exec(colSql); } catch (e) {}
@@ -589,6 +590,15 @@ function createJsonDb() {
             store.company_settings.push(newCompany);
             saveStore();
             return { lastInsertRowid: newId };
+          }
+          if (cleanSql.includes('UPDATE company_settings SET invoice_settings = ? WHERE id = ?')) {
+            const [settingsVal, targetId] = params;
+            const target = (store.company_settings || []).find(c => c.id === Number(targetId));
+            if (target) {
+              target.invoice_settings = typeof settingsVal === 'string' ? JSON.parse(settingsVal) : settingsVal;
+              saveStore();
+            }
+            return { changes: 1 };
           }
           if (cleanSql.includes('UPDATE company_settings')) {
             let activeCompany = null;

@@ -32,6 +32,16 @@ import {
 } from 'lucide-react';
 import CreateBusinessModal from './CreateBusinessModal';
 import EditBusinessModal from './EditBusinessModal';
+import InvoiceSettingsView from './InvoiceSettingsView';
+import { 
+  PrintSettingsView, 
+  RemindersSettingsView, 
+  CaReportsSettingsView, 
+  PricingSettingsView, 
+  ReferEarnSettingsView, 
+  HelpSupportSettingsView, 
+  AccountSettingsView 
+} from './SettingsSubViews';
 
 export default function SettingsView({ 
   company, 
@@ -354,7 +364,13 @@ export default function SettingsView({
                 key={item.id}
                 type="button"
                 onClick={() => {
-                  if (item.tabLink && onNavigateTab) {
+                  if (item.id === 'logout') {
+                    if (window.confirm('Kya aap logout karna chahte hain?')) {
+                      localStorage.removeItem('mybillbook_auth_token');
+                      localStorage.removeItem('mybillbook_current_user');
+                      window.location.reload();
+                    }
+                  } else if (item.tabLink && onNavigateTab) {
                     onNavigateTab(item.tabLink);
                   } else {
                     setActiveSettingsMenu(item.id);
@@ -397,9 +413,26 @@ export default function SettingsView({
       </aside>
 
       {/* ========================================================= */}
-      {/* RIGHT: Top Header + Two Column Form Area matching screenshot */}
+      {/* RIGHT: Main Content Router based on activeSettingsMenu */}
       {/* ========================================================= */}
-      <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
+      {activeSettingsMenu === 'invoice-settings' ? (
+        <InvoiceSettingsView company={company} onBackToDashboard={onBackToDashboard} />
+      ) : activeSettingsMenu === 'print-settings' ? (
+        <PrintSettingsView company={company} />
+      ) : activeSettingsMenu === 'reminders' ? (
+        <RemindersSettingsView company={company} />
+      ) : activeSettingsMenu === 'ca-reports' ? (
+        <CaReportsSettingsView company={company} />
+      ) : activeSettingsMenu === 'pricing' ? (
+        <PricingSettingsView />
+      ) : activeSettingsMenu === 'refer-earn' ? (
+        <ReferEarnSettingsView />
+      ) : activeSettingsMenu === 'help-support' ? (
+        <HelpSupportSettingsView />
+      ) : activeSettingsMenu === 'account' ? (
+        <AccountSettingsView company={company} />
+      ) : (
+        <div className="flex-1 flex flex-col min-h-screen overflow-x-hidden">
         
         {/* Top Header Bar matching Screenshot */}
         <div className="bg-white border-b border-slate-200 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky top-0 z-10 shadow-2xs">
@@ -928,6 +961,7 @@ export default function SettingsView({
           </div>
         </form>
       </div>
+      )}
 
       {/* Create New Business Modal */}
       <CreateBusinessModal
