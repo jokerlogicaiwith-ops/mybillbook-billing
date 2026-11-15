@@ -29,6 +29,23 @@ app.get(['/vsrm-shop.apk', '/download-apk', '/download-app', '/app.apk'], (req, 
   res.status(404).send('APK file not found');
 });
 
+// Direct Windows PC Software Download routes
+app.get(['/vsrm-shop-windows.zip', '/download-windows', '/download-pc', '/VSRM-Shop-Windows.zip'], (req, res) => {
+  const possiblePaths = [
+    path.resolve(__dirname, '../client/dist/vsrm-shop-windows.zip'),
+    path.resolve(__dirname, '../client/public/vsrm-shop-windows.zip'),
+    path.resolve(__dirname, '../vsrm-shop-windows.zip')
+  ];
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', 'attachment; filename="VSRM-Shop-Windows.zip"');
+      return fs.createReadStream(p).pipe(res);
+    }
+  }
+  res.status(404).send('Windows software bundle not found');
+});
+
 // Serve static frontend files from client/dist
 const clientDistPath = path.resolve(__dirname, '../client/dist');
 app.use(express.static(clientDistPath));

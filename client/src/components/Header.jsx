@@ -9,7 +9,8 @@ import {
   RefreshCw,
   CheckCircle2,
   Smartphone,
-  Download
+  Download,
+  Monitor
 } from 'lucide-react';
 
 export default function Header({ 
@@ -39,8 +40,20 @@ export default function Header({
           className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-xs hover:shadow-md transition transform hover:scale-[1.02] mr-1"
         >
           <Smartphone className="w-4 h-4 text-emerald-200" />
-          <span className="hidden md:inline">Install Android App</span>
-          <span className="md:hidden">App APK</span>
+          <span className="hidden md:inline">Android App</span>
+          <span className="md:hidden">APK</span>
+          <Download className="w-3.5 h-3.5 text-white" />
+        </a>
+
+        <a 
+          href="/vsrm-shop-windows.zip"
+          download="VSRM-Shop-Windows.zip"
+          title="Download Windows PC Desktop Software (VSRM Shop .exe)"
+          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-xs hover:shadow-md transition transform hover:scale-[1.02] mr-1"
+        >
+          <Monitor className="w-4 h-4 text-blue-200" />
+          <span className="hidden md:inline">Windows Software</span>
+          <span className="md:hidden">PC .exe</span>
           <Download className="w-3.5 h-3.5 text-white" />
         </a>
 

@@ -22,7 +22,8 @@ import {
   Check,
   Pencil,
   Smartphone,
-  Download
+  Download,
+  Monitor
 } from 'lucide-react';
 import CreateBusinessModal from './CreateBusinessModal';
 import EditBusinessModal from './EditBusinessModal';
@@ -652,19 +653,39 @@ export default function Sidebar({
           href="/vsrm-shop.apk"
           download="VSRM-Shop.apk"
           title="Direct Download & Install VSRM Shop Android App"
-          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md text-xs font-bold transition transform hover:scale-[1.02] cursor-pointer"
+          className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md text-xs font-bold transition transform hover:scale-[1.02] cursor-pointer"
         >
-          <div className="flex items-center space-x-2.5">
+          <div className="flex items-center space-x-2">
             <Smartphone className="w-4 h-4 text-emerald-200" />
             <div className="text-left leading-tight">
-              <div className="flex items-center space-x-1.5 font-extrabold text-[12px]">
-                <span>Install Mobile App</span>
-                <span className="bg-white/25 text-[9px] px-1 py-0.2 rounded font-black tracking-wide">APK</span>
+              <div className="flex items-center space-x-1 font-extrabold text-[11px]">
+                <span>Android App</span>
+                <span className="bg-white/25 text-[8px] px-1 rounded font-black">APK</span>
               </div>
-              <div className="text-[10px] text-emerald-100 font-normal">Direct Download & Install</div>
+              <div className="text-[9px] text-emerald-100 font-normal">Direct Mobile Install</div>
             </div>
           </div>
-          <Download className="w-4 h-4 text-white" />
+          <Download className="w-3.5 h-3.5 text-white" />
+        </a>
+
+        {/* Direct Windows Software Download Button */}
+        <a
+          href="/vsrm-shop-windows.zip"
+          download="VSRM-Shop-Windows.zip"
+          title="Direct Download Windows PC Software (VSRM Shop .exe)"
+          className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md text-xs font-bold transition transform hover:scale-[1.02] cursor-pointer"
+        >
+          <div className="flex items-center space-x-2">
+            <Monitor className="w-4 h-4 text-blue-200" />
+            <div className="text-left leading-tight">
+              <div className="flex items-center space-x-1 font-extrabold text-[11px]">
+                <span>Windows App</span>
+                <span className="bg-white/25 text-[8px] px-1 rounded font-black">PC .exe</span>
+              </div>
+              <div className="text-[9px] text-blue-100 font-normal">Windows 10/11 Desktop</div>
+            </div>
+          </div>
+          <Download className="w-3.5 h-3.5 text-white" />
         </a>
 
         <button
