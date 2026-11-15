@@ -20,7 +20,9 @@ import {
   ScanLine,
   Users2,
   Check,
-  Pencil
+  Pencil,
+  Smartphone,
+  Download
 } from 'lucide-react';
 import CreateBusinessModal from './CreateBusinessModal';
 import EditBusinessModal from './EditBusinessModal';
@@ -636,6 +638,26 @@ export default function Sidebar({
             स्विच
           </button>
         </div>
+
+        {/* Direct Android App Install Button */}
+        <a
+          href="/vsrm-shop.apk"
+          download="VSRM-Shop.apk"
+          title="Direct Download & Install VSRM Shop Android App"
+          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md text-xs font-bold transition transform hover:scale-[1.02] cursor-pointer"
+        >
+          <div className="flex items-center space-x-2.5">
+            <Smartphone className="w-4 h-4 text-emerald-200" />
+            <div className="text-left leading-tight">
+              <div className="flex items-center space-x-1.5 font-extrabold text-[12px]">
+                <span>Install Mobile App</span>
+                <span className="bg-white/25 text-[9px] px-1 py-0.2 rounded font-black tracking-wide">APK</span>
+              </div>
+              <div className="text-[10px] text-emerald-100 font-normal">Direct Download & Install</div>
+            </div>
+          </div>
+          <Download className="w-4 h-4 text-white" />
+        </a>
 
         <button
           onClick={() => setActiveTab('settings')}

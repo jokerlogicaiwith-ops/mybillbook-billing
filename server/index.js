@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const QRCode = require('qrcode');
 const db = require('./db');
 
@@ -10,6 +11,26 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Direct APK Download routes for Android app
+app.get(['/vsrm-shop.apk', '/download-apk', '/download-app', '/app.apk'], (req, res) => {
+  const possiblePaths = [
+    path.resolve(__dirname, '../client/dist/vsrm-shop.apk'),
+    path.resolve(__dirname, '../client/public/vsrm-shop.apk'),
+    path.resolve(__dirname, '../vsrm-shop.apk')
+  ];
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      return res.download(p, 'VSRM-Shop.apk', {
+        headers: {
+          'Content-Type': 'application/vnd.android.package-archive',
+          'Content-Disposition': 'attachment; filename="VSRM-Shop.apk"'
+        }
+      });
+    }
+  }
+  res.status(404).send('APK file not found');
+});
 
 // Serve static frontend files from client/dist
 const clientDistPath = path.resolve(__dirname, '../client/dist');

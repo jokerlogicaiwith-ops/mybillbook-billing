@@ -7,7 +7,9 @@ import {
   MessageCircle, 
   HelpCircle,
   RefreshCw,
-  CheckCircle2
+  CheckCircle2,
+  Smartphone,
+  Download
 } from 'lucide-react';
 
 export default function Header({ 
@@ -30,6 +32,18 @@ export default function Header({
       </div>
 
       <div className="flex items-center space-x-2">
+        <a 
+          href="/vsrm-shop.apk"
+          download="VSRM-Shop.apk"
+          title="Direct Download & Install Android App (VSRM Shop APK)"
+          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-xs hover:shadow-md transition transform hover:scale-[1.02] mr-1"
+        >
+          <Smartphone className="w-4 h-4 text-emerald-200" />
+          <span className="hidden md:inline">Install Android App</span>
+          <span className="md:hidden">App APK</span>
+          <Download className="w-3.5 h-3.5 text-white" />
+        </a>
+
         <button 
           title="Print POS / Thermal Receipt"
           onClick={() => onOpenInvoiceModal && onOpenInvoiceModal('Sales Invoices')}
