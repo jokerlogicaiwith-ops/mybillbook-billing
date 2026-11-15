@@ -158,9 +158,17 @@ export default function Sidebar({
             className="flex items-center space-x-2.5 min-w-0 flex-1 cursor-pointer group p-1 rounded-lg hover:bg-slate-800/50 transition"
             title="Click to switch business"
           >
-            <div className="w-9 h-9 rounded-full bg-[#1d4ed8] text-white font-bold flex items-center justify-center text-base shadow-sm shrink-0">
-              {company?.name ? company.name.charAt(0).toUpperCase() : 'A'}
-            </div>
+            {company?.logo_url ? (
+              <img 
+                src={company.logo_url} 
+                alt="Logo" 
+                className="w-9 h-9 rounded-full object-cover shadow-sm shrink-0 border border-amber-400/50" 
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-[#1d4ed8] text-white font-bold flex items-center justify-center text-base shadow-sm shrink-0">
+                {company?.name ? company.name.charAt(0).toUpperCase() : 'A'}
+              </div>
+            )}
             <div className="overflow-hidden min-w-0 flex-1">
               <div className="flex items-center space-x-1">
                 <h2 className="font-semibold text-white text-xs tracking-wide truncate group-hover:text-blue-200">
