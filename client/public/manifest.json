@@ -1,0 +1,21 @@
+{
+  "short_name": "VSRM Shop",
+  "name": "VSRM Shop - Billing & Accounting",
+  "icons": [
+    {
+      "src": "/apoorv-logo.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/apoorv-logo.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0d131f",
+  "theme_color": "#1e40af",
+  "display": "standalone",
+  "orientation": "portrait"
+}
