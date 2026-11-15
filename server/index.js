@@ -21,12 +21,9 @@ app.get(['/vsrm-shop.apk', '/download-apk', '/download-app', '/app.apk'], (req, 
   ];
   for (const p of possiblePaths) {
     if (fs.existsSync(p)) {
-      return res.download(p, 'VSRM-Shop.apk', {
-        headers: {
-          'Content-Type': 'application/vnd.android.package-archive',
-          'Content-Disposition': 'attachment; filename="VSRM-Shop.apk"'
-        }
-      });
+      res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+      res.setHeader('Content-Disposition', 'attachment; filename="VSRM-Shop.apk"');
+      return fs.createReadStream(p).pipe(res);
     }
   }
   res.status(404).send('APK file not found');
