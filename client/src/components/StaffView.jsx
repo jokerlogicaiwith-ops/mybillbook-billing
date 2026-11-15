@@ -174,7 +174,7 @@ export default function StaffView({ onOpenInvoiceModal, onViewInvoice, onSwitchU
   const topPerformer = [...staffList].sort((a, b) => (b.total_sales_amount || 0) - (a.total_sales_amount || 0))[0];
 
   return (
-    <div className="bg-[#f8fafc] min-h-screen text-slate-800 font-sans pb-16">
+    <div className="bg-[#f8fafc] min-h-screen text-slate-800 font-sans pb-16 w-full max-w-full overflow-x-hidden">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow-xl text-xs font-medium z-50 flex items-center space-x-2 animate-in fade-in duration-200">

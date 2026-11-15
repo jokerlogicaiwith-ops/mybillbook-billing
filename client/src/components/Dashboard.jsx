@@ -42,7 +42,7 @@ export default function Dashboard({
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto w-full max-w-full overflow-x-hidden">
       {/* Active System Banner (Replaces "Plan Expired" banner) */}
       <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-blue-700 text-white rounded-xl p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center space-x-3">

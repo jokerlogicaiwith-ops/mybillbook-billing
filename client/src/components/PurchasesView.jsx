@@ -22,7 +22,8 @@ import {
   Keyboard,
   Eye,
   BarChart3,
-  X
+  X,
+  Menu
 } from 'lucide-react';
 import CreatePurchaseInvoiceView from './CreatePurchaseInvoiceView';
 
@@ -30,7 +31,8 @@ export default function PurchasesView({
   onOpenInvoiceModal, 
   onViewInvoice, 
   subTab = 'invoices',
-  onSelectSubTab
+  onSelectSubTab,
+  onToggleMobileSidebar
 }) {
   const [isCreating, setIsCreating] = useState(false);
   const [transactions, setTransactions] = useState([]);
@@ -201,7 +203,7 @@ export default function PurchasesView({
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-800 p-6 space-y-5 font-sans relative">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-5 font-sans relative w-full max-w-full overflow-x-hidden">
       {/* Toast notification */}
       {toastMessage && (
         <div className="fixed top-5 right-5 bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow-xl text-xs font-semibold z-50 animate-in fade-in slide-in-from-top-2 duration-200 flex items-center space-x-2">
@@ -211,8 +213,18 @@ export default function PurchasesView({
       )}
 
       {/* Top Header matching MyBillBook screenshot */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-1">
-        <div className="flex items-center space-x-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-1">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+          {onToggleMobileSidebar && (
+            <button
+              type="button"
+              onClick={onToggleMobileSidebar}
+              title="Open Menu"
+              className="lg:hidden p-2 -ml-1 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 transition shrink-0 cursor-pointer"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">
             {getSubTabTitle()}
           </h1>

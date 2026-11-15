@@ -138,7 +138,7 @@ export default function StaffPortalView({
   const isAccountant = (staff.role || '').toLowerCase().includes('account');
 
   return (
-    <div className="bg-[#f8fafc] min-h-screen text-slate-800 font-sans pb-16">
+    <div className="bg-[#f8fafc] min-h-screen text-slate-800 font-sans pb-16 w-full max-w-full overflow-x-hidden">
       {/* Toast */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow-xl text-xs font-medium z-50 flex items-center space-x-2 animate-in fade-in duration-200">

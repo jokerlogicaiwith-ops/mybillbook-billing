@@ -3,7 +3,7 @@ import {
   Plus, Search, AlertTriangle, CheckCircle, Tag, ScanLine, Sparkles, 
   Printer, MoreVertical, FileText, Settings, Share2, Info, ChevronDown, 
   Warehouse, ArrowRightLeft, Download, Trash2, Edit3, Copy, X, SlidersHorizontal,
-  ExternalLink, TrendingUp, Package, Eye, HelpCircle, Layers, Barcode, Keyboard, QrCode
+  ExternalLink, TrendingUp, Package, Eye, HelpCircle, Layers, Barcode, Keyboard, QrCode, Menu
 } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
 import ViewBarcodeModal from './ViewBarcodeModal';
@@ -46,7 +46,7 @@ function MiniBarcode({ code, height = 24, width = 1.2, showValue = false, classN
   return <svg ref={svgRef} className={className} />;
 }
 
-export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpenInvoiceModal }) {
+export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpenInvoiceModal, onToggleMobileSidebar }) {
   const [items, setItems] = useState([]);
   const [stats, setStats] = useState({
     stockValue: 2030954.24,
@@ -569,7 +569,7 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
   });
 
   return (
-    <div className="bg-[#f8fafc] min-h-screen text-slate-800 font-sans pb-16 relative">
+    <div className="bg-[#f8fafc] min-h-screen text-slate-800 font-sans pb-16 relative w-full max-w-full overflow-x-hidden">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow-xl text-xs font-medium z-50 flex items-center space-x-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
@@ -579,10 +579,22 @@ export default function ItemsView({ subTab = 'inventory', onSelectSubTab, onOpen
       )}
 
       {/* 1. Header matching MyBillBook screenshot */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-          {subTab === 'godown' ? 'Godown (Warehouse)' : 'Items'}
-        </h1>
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center space-x-2">
+          {onToggleMobileSidebar && (
+            <button
+              type="button"
+              onClick={onToggleMobileSidebar}
+              title="Open Menu"
+              className="lg:hidden p-2 -ml-1 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition shrink-0 cursor-pointer"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight truncate">
+            {subTab === 'godown' ? 'Godown (Warehouse)' : 'Items'}
+          </h1>
+        </div>
 
         {/* Right Action Icons matching screenshot */}
         <div className="flex items-center space-x-2.5">

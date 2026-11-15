@@ -26,14 +26,16 @@ import {
   RotateCcw,
   CreditCard,
   Send,
-  FileCheck2
+  FileCheck2,
+  Menu
 } from 'lucide-react';
 
 export default function SalesInvoicesView({ 
   onOpenInvoiceModal, 
   onViewInvoice, 
   subTab = 'invoices',
-  onSelectSubTab
+  onSelectSubTab,
+  onToggleMobileSidebar
 }) {
   const [transactions, setTransactions] = useState([]);
   const [stats, setStats] = useState({
@@ -244,7 +246,7 @@ export default function SalesInvoicesView({
   };
 
   return (
-    <div className="p-6 space-y-5 max-w-[1550px] mx-auto text-slate-800">
+    <div className="p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-5 max-w-[1550px] mx-auto text-slate-800 w-full max-w-full overflow-x-hidden">
       {/* Toast Alert */}
       {toastMessage && (
         <div className="fixed top-4 right-4 z-50 bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-xl flex items-center space-x-2 text-xs font-bold animate-in fade-in slide-in-from-top-2">
@@ -254,10 +256,22 @@ export default function SalesInvoicesView({
       )}
 
       {/* 1. Header with Page Title and Action Icons matching MyBillBook */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-          {getSubTabHeading()}
-        </h1>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center space-x-2">
+          {onToggleMobileSidebar && (
+            <button
+              type="button"
+              onClick={onToggleMobileSidebar}
+              title="Open Menu"
+              className="lg:hidden p-2 -ml-1 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 transition shrink-0 cursor-pointer"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+          )}
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight truncate">
+            {getSubTabHeading()}
+          </h1>
+        </div>
 
         <div className="flex items-center space-x-2.5">
           {/* Reports Dropdown */}

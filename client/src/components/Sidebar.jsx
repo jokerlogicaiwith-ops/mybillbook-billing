@@ -23,7 +23,8 @@ import {
   Pencil,
   Smartphone,
   Download,
-  Monitor
+  Monitor,
+  X
 } from 'lucide-react';
 import CreateBusinessModal from './CreateBusinessModal';
 import EditBusinessModal from './EditBusinessModal';
@@ -43,7 +44,9 @@ export default function Sidebar({
   setPurchasesSubTab,
   currentUser,
   onOpenLoginModal,
-  onSwitchCompany
+  onSwitchCompany,
+  isMobileOpen = false,
+  onClose
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [companyDropdownOpen, setCompanyDropdownOpen] = useState(false);
@@ -105,11 +108,17 @@ export default function Sidebar({
     { id: 'godown', label: 'Godown (Warehouse)' }
   ];
 
+  const handleNavTab = (tab) => {
+    setActiveTab(tab);
+    if (onClose) onClose();
+  };
+
   const handleSelectItemsSubItem = (subId) => {
     setActiveTab('items');
     if (setItemsSubTab) {
       setItemsSubTab(subId);
     }
+    if (onClose) onClose();
   };
 
   const salesSubmenuItems = [
@@ -127,6 +136,7 @@ export default function Sidebar({
     if (setSalesSubTab) {
       setSalesSubTab(subId);
     }
+    if (onClose) onClose();
   };
 
   const purchasesSubmenuItems = [
@@ -142,11 +152,21 @@ export default function Sidebar({
     if (setPurchasesSubTab) {
       setPurchasesSubTab(subId);
     }
+    if (onClose) onClose();
   };
 
   return (
     <>
-    <aside className="w-64 bg-[#111625] text-slate-300 flex flex-col h-screen fixed left-0 top-0 select-none border-r border-slate-800/90 z-30 font-sans">
+    {/* Mobile Backdrop Overlay */}
+    {isMobileOpen && (
+      <div 
+        onClick={onClose} 
+        className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-xs transition-opacity duration-300"
+        aria-hidden="true"
+      />
+    )}
+
+    <aside className={`w-64 bg-[#111625] text-slate-300 flex flex-col h-screen fixed left-0 top-0 select-none border-r border-slate-800/90 z-50 font-sans transition-transform duration-300 ease-in-out ${isMobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'}`}>
       {/* 1. Business Header matching screenshot with Switcher Dropdown */}
       <div className="p-3 border-b border-slate-800/60 relative">
         <div className="flex items-center justify-between gap-1.5 p-1 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition">
@@ -189,7 +209,7 @@ export default function Sidebar({
             title="Business & Invoice Settings (सेटिंग्स)"
             onClick={(e) => {
               e.stopPropagation();
-              setActiveTab('settings');
+              handleNavTab('settings');
             }}
             className={`p-2 rounded-lg border transition shrink-0 cursor-pointer ${
               activeTab === 'settings' 
@@ -199,6 +219,18 @@ export default function Sidebar({
           >
             <Settings className="w-4 h-4" />
           </button>
+
+          {/* Mobile Close (X) button */}
+          {onClose && (
+            <button
+              type="button"
+              title="Close Menu"
+              onClick={onClose}
+              className="lg:hidden p-2 rounded-lg bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700 border border-slate-700/80 shrink-0 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Business Switcher Dropdown */}
@@ -329,7 +361,7 @@ export default function Sidebar({
           <div className="space-y-0.5">
             {/* Dashboard */}
             <button
-              onClick={() => setActiveTab('dashboard')}
+              onClick={() => handleNavTab('dashboard')}
               className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                 activeTab === 'dashboard' 
                   ? 'bg-[#232f4b] text-white shadow-xs font-semibold' 
@@ -344,7 +376,7 @@ export default function Sidebar({
 
             {/* Parties */}
             <button
-              onClick={() => setActiveTab('parties')}
+              onClick={() => handleNavTab('parties')}
               className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                 activeTab === 'parties' 
                   ? 'bg-[#232f4b] text-white shadow-xs font-semibold' 
@@ -360,7 +392,7 @@ export default function Sidebar({
 
             {/* Staff & Users */}
             <button
-              onClick={() => setActiveTab('staff')}
+              onClick={() => handleNavTab('staff')}
               className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                 activeTab === 'staff' || activeTab === 'manage-users' || activeTab === 'staff-payroll'
                   ? 'bg-[#232f4b] text-white shadow-xs font-semibold' 
@@ -379,7 +411,7 @@ export default function Sidebar({
             {/* My Staff / Accountant Personal Portal */}
             {currentUser && !currentUser.is_admin && (
               <button
-                onClick={() => setActiveTab('staff-portal')}
+                onClick={() => handleNavTab('staff-portal')}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                   activeTab === 'staff-portal' 
                     ? 'bg-indigo-900/50 text-white shadow-xs font-semibold border border-indigo-700/60' 
@@ -545,7 +577,7 @@ export default function Sidebar({
 
             {/* Reports */}
             <button
-              onClick={() => setActiveTab('reports')}
+              onClick={() => handleNavTab('reports')}
               className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                 activeTab === 'reports' 
                   ? 'bg-[#232f4b] text-white shadow-xs font-semibold' 
@@ -567,7 +599,7 @@ export default function Sidebar({
           </div>
           <div className="space-y-0.5">
             <button
-              onClick={() => setActiveTab('cash-bank')}
+              onClick={() => handleNavTab('cash-bank')}
               className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                 activeTab === 'cash-bank' 
                   ? 'bg-[#232f4b] text-white shadow-xs font-semibold' 
@@ -594,21 +626,21 @@ export default function Sidebar({
             {showMoreAccounting && (
               <div className="space-y-0.5 pt-1.5 animate-in fade-in duration-150">
                 <button
-                  onClick={() => setActiveTab('e-invoicing')}
+                  onClick={() => handleNavTab('e-invoicing')}
                   className="w-full flex items-center space-x-3 px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5 text-slate-500" />
                   <span>E-Invoicing</span>
                 </button>
                 <button
-                  onClick={() => setActiveTab('automated-bills')}
+                  onClick={() => handleNavTab('automated-bills')}
                   className="w-full flex items-center space-x-3 px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50"
                 >
                   <Repeat className="w-3.5 h-3.5 text-slate-500" />
                   <span>Automated Bills</span>
                 </button>
                 <button
-                  onClick={() => setActiveTab('pos-billing')}
+                  onClick={() => handleNavTab('pos-billing')}
                   className="w-full flex items-center space-x-3 px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/50"
                 >
                   <ScanLine className="w-3.5 h-3.5 text-slate-500" />

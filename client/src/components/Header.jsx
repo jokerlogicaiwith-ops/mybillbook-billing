@@ -10,7 +10,8 @@ import {
   CheckCircle2,
   Smartphone,
   Download,
-  Monitor
+  Monitor,
+  Menu
 } from 'lucide-react';
 
 export default function Header({ 
@@ -20,12 +21,23 @@ export default function Header({
   onOpenInvoiceModal, 
   onSelectTab,
   currentUser,
-  onOpenLoginModal
+  onOpenLoginModal,
+  onToggleMobileSidebar
 }) {
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-20">
-      <div className="flex items-center space-x-3">
-        <h1 className="text-xl font-bold text-slate-800 tracking-tight">{title}</h1>
+    <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20">
+      <div className="flex items-center space-x-2 sm:space-x-3">
+        {onToggleMobileSidebar && (
+          <button
+            type="button"
+            onClick={onToggleMobileSidebar}
+            title="Open Menu"
+            className="lg:hidden p-2 -ml-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition shrink-0 cursor-pointer"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+        <h1 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight truncate">{title}</h1>
         <div className="hidden sm:flex items-center px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold space-x-1">
           <CheckCircle2 className="w-3.5 h-3.5" />
           <span>Lifetime Active (No Renewal Required)</span>

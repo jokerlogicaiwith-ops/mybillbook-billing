@@ -34,6 +34,7 @@ export default function App() {
   const [company, setCompany] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // User / Staff Authentication State
   const [currentUser, setCurrentUser] = useState(() => {
@@ -209,7 +210,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-50 flex w-full max-w-full overflow-x-hidden">
       {/* Sidebar Navigation */}
       <Sidebar 
         activeTab={activeTab} 
@@ -227,10 +228,12 @@ export default function App() {
         onSwitchCompany={handleCompanySwitch}
         currentUser={currentUser}
         onOpenLoginModal={() => setIsLoginModalOpen(true)}
+        isMobileOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 ml-64 flex flex-col min-h-screen">
+      <div className="flex-1 ml-0 lg:ml-64 flex flex-col min-h-screen w-full max-w-full overflow-x-hidden">
         {activeTab !== 'sales' && activeTab !== 'items' && activeTab !== 'purchases' && (
           <Header 
             title={getPageTitle()} 
@@ -240,6 +243,7 @@ export default function App() {
             onSelectTab={setActiveTab}
             currentUser={currentUser}
             onOpenLoginModal={() => setIsLoginModalOpen(true)}
+            onToggleMobileSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
           />
         )}
 
@@ -288,6 +292,7 @@ export default function App() {
               subTab={itemsSubTab}
               onSelectSubTab={setItemsSubTab}
               onOpenInvoiceModal={handleOpenInvoiceModal}
+              onToggleMobileSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
             />
           )}
 
@@ -298,6 +303,7 @@ export default function App() {
               onSelectSubTab={setSalesSubTab}
               onOpenInvoiceModal={handleOpenInvoiceModal}
               onViewInvoice={handleViewInvoice}
+              onToggleMobileSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
             />
           )}
 
@@ -308,6 +314,7 @@ export default function App() {
               onSelectSubTab={setPurchasesSubTab}
               onOpenInvoiceModal={handleOpenInvoiceModal}
               onViewInvoice={handleViewInvoice}
+              onToggleMobileSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
             />
           )}
 
