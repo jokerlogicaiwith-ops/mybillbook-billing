@@ -11,7 +11,8 @@ import {
   Smartphone,
   Download,
   Monitor,
-  Menu
+  Menu,
+  Sparkles
 } from 'lucide-react';
 
 export default function Header({ 
@@ -26,7 +27,7 @@ export default function Header({
   onOpenInstallModal
 }) {
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20">
+    <header className="h-16 bg-white border-b-2 border-indigo-600 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20 shadow-xs">
       <div className="flex items-center space-x-2 sm:space-x-3">
         {onToggleMobileSidebar && (
           <button
@@ -39,9 +40,9 @@ export default function Header({
           </button>
         )}
         <h1 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight truncate">{title}</h1>
-        <div className="hidden sm:flex items-center px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold space-x-1">
-          <CheckCircle2 className="w-3.5 h-3.5" />
-          <span>Lifetime Active (No Renewal Required)</span>
+        <div className="hidden sm:flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 text-white text-xs font-bold shadow-xs space-x-1.5 ring-2 ring-violet-200">
+          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+          <span>v2.0 Updated • Lifetime Active</span>
         </div>
       </div>
 
@@ -61,11 +62,11 @@ export default function Header({
         <button 
           onClick={onOpenInstallModal}
           title="Install Desktop App & Shortcut (कंप्यूटर पर इनस्टॉल करें)"
-          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-xs hover:shadow-md transition transform hover:scale-[1.02] mr-1 cursor-pointer"
+          className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-extrabold shadow-md hover:shadow-lg transition transform hover:scale-[1.03] ring-2 ring-purple-300 mr-1 cursor-pointer"
         >
-          <Monitor className="w-4 h-4 text-blue-200" />
-          <span className="hidden md:inline">Install on PC</span>
-          <span className="md:hidden">Desktop</span>
+          <Monitor className="w-4 h-4 text-amber-300" />
+          <span className="hidden md:inline">Install on PC (Desktop)</span>
+          <span className="md:hidden">PC App</span>
           <Download className="w-3.5 h-3.5 text-white" />
         </button>
 
