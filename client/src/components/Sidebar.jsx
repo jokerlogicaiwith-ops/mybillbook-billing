@@ -46,7 +46,8 @@ export default function Sidebar({
   onOpenLoginModal,
   onSwitchCompany,
   isMobileOpen = false,
-  onClose
+  onClose,
+  onOpenInstallModal
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [companyDropdownOpen, setCompanyDropdownOpen] = useState(false);
@@ -700,25 +701,24 @@ export default function Sidebar({
           <Download className="w-3.5 h-3.5 text-white" />
         </a>
 
-        {/* Direct Windows Software Download Button */}
-        <a
-          href="/vsrm-shop-windows.zip"
-          download="VSRM-Shop-Windows.zip"
-          title="Direct Download Windows PC Software (VSRM Shop .exe)"
+        {/* Direct Windows Software & Desktop Shortcut Button */}
+        <button
+          onClick={onOpenInstallModal}
+          title="Install Desktop App & Shortcut (कंप्यूटर पर इनस्टॉल करें)"
           className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md text-xs font-bold transition transform hover:scale-[1.02] cursor-pointer"
         >
           <div className="flex items-center space-x-2">
             <Monitor className="w-4 h-4 text-blue-200" />
             <div className="text-left leading-tight">
               <div className="flex items-center space-x-1 font-extrabold text-[11px]">
-                <span>Windows App</span>
-                <span className="bg-white/25 text-[8px] px-1 rounded font-black">PC .exe</span>
+                <span>Desktop App</span>
+                <span className="bg-white/25 text-[8px] px-1 rounded font-black">PC Icon</span>
               </div>
-              <div className="text-[9px] text-blue-100 font-normal">Windows 10/11 Desktop</div>
+              <div className="text-[9px] text-blue-100 font-normal">Install on Windows/PC</div>
             </div>
           </div>
           <Download className="w-3.5 h-3.5 text-white" />
-        </a>
+        </button>
 
         <button
           onClick={() => setActiveTab('settings')}

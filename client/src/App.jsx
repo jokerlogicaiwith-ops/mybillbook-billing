@@ -14,6 +14,7 @@ import CustomerBillView from './components/CustomerBillView';
 import StaffView from './components/StaffView';
 import StaffPortalView from './components/StaffPortalView';
 import StaffLoginModal from './components/StaffLoginModal';
+import DesktopInstallModal from './components/DesktopInstallModal';
 import { Building2, Sparkles, ScanLine, FileSpreadsheet, ShieldAlert } from 'lucide-react';
 
 export default function App() {
@@ -52,8 +53,16 @@ export default function App() {
   const [invoiceModalType, setInvoiceModalType] = useState('Sales Invoices');
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [selectedTxnId, setSelectedTxnId] = useState(null);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
 
   useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
     try {
       if (localStorage.getItem('mybillbook_apoorv_default_set_v1') !== 'true') {
         localStorage.setItem('mybillbook_active_company_id', '2');
@@ -62,7 +71,23 @@ export default function App() {
     } catch (e) {}
     fetchCompany();
     fetchDashboard();
+
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
+
+  const handleDirectInstall = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('User installed VSRM Shop PWA');
+        }
+        setDeferredPrompt(null);
+      });
+    } else {
+      setIsInstallModalOpen(true);
+    }
+  };
 
   const fetchCompany = async () => {
     try {
@@ -230,6 +255,7 @@ export default function App() {
         onOpenLoginModal={() => setIsLoginModalOpen(true)}
         isMobileOpen={isMobileSidebarOpen}
         onClose={() => setIsMobileSidebarOpen(false)}
+        onOpenInstallModal={() => setIsInstallModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -244,6 +270,7 @@ export default function App() {
             currentUser={currentUser}
             onOpenLoginModal={() => setIsLoginModalOpen(true)}
             onToggleMobileSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
+            onOpenInstallModal={() => setIsInstallModalOpen(true)}
           />
         )}
 
@@ -413,6 +440,14 @@ export default function App() {
         onClose={() => setIsLoginModalOpen(false)}
         onLoginSuccess={handleLoginSuccess}
         currentLoggedInUser={currentUser}
+      />
+
+      {/* Desktop PC Install & Shortcut Guide Modal */}
+      <DesktopInstallModal 
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
+        onDirectInstall={handleDirectInstall}
+        hasDeferredPrompt={!!deferredPrompt}
       />
     </div>
   );

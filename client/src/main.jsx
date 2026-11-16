@@ -30,6 +30,15 @@ window.fetch = function (url, options = {}) {
   return originalFetch.call(this, url, options);
 };
 
+// Register PWA Service Worker for Desktop & Mobile Installation
+if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.log('SW registration error:', err);
+    });
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <App />
